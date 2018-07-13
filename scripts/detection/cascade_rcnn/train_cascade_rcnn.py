@@ -343,7 +343,7 @@ def train(net, train_data, val_data, eval_metric, args):
             metric.reset()
         tic = time.time()
         btic = time.time()
-        net.hybridize()
+        #net.hybridize()
         # test validation
         # map_name, mean_ap = validate(net, val_data, ctx, eval_metric)
         # val_msg = '\n'.join(['{}={}'.format(k, v) for k, v in zip(map_name, mean_ap)])

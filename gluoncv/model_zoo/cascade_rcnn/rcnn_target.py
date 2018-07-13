@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from mxnet import gluon
 from mxnet import autograd
-from ...nn.coder import MultiClassEncoder, NormalizedBoxCenterEncoder
+from ...nn.coder import MultiClassEncoder, NormalizedBoxCenterEncoder, NormalizedPerClassBoxCenterEncoder
 from ...nn.matcher import MaximumMatcher_Cascade
 
 
@@ -90,9 +90,10 @@ class RCNNTargetGenerator(gluon.Block):
     def __init__(self, num_class, means=(0., 0., 0., 0.), stds=(.1, .1, .2, .2)):
         super(RCNNTargetGenerator, self).__init__()
         self._cls_encoder = MultiClassEncoder()
-        self._box_encoder = NormalizedBoxCenterEncoder(
-            means=means, stds=stds)
-
+        # self._box_encoder = NormalizedBoxCenterEncoder(
+        #     means=means, stds=stds)
+        self._box_encoder = NormalizedPerClassBoxCenterEncoder(
+            num_class=num_class, means=means, stds=stds)
     #pylint: disable=arguments-differ
     def forward(self, roi, samples, matches, gt_label, gt_box):
         """
@@ -100,15 +101,15 @@ class RCNNTargetGenerator(gluon.Block):
         """
         with autograd.pause():
             cls_target = self._cls_encoder(samples, matches, gt_label)
-            box_target, box_mask = self._box_encoder(samples, matches, roi, gt_box)
-            # print('roi\n', roi.astype(int), '\n--------------------')
-            # print('box_target\n', box_target.astype(int), '\n--------------------')
-            # print('box_mask\n', box_mask, '\n--------------------\n\n\n\n\n')
+            #box_target, box_mask = self._box_encoder(samples, matches, roi, gt_box)
+            box_target, box_mask = self._box_encoder(
+                samples, matches, roi, gt_label, gt_box)
 
             # modify shapes to match predictions
             cls_target = cls_target[0]
-            # box_target = box_target.transpose((1, 2, 0, 3))[0]
-            # box_mask = box_mask.transpose((1, 2, 0, 3))[0]
-            box_target = box_target.transpose((1, 0, 2))
-            box_mask = box_mask.transpose((1, 0, 2))
+            box_target = box_target.transpose((1, 2, 0, 3))[0]
+            box_mask = box_mask.transpose((1, 2, 0, 3))[0]
+            print(box_target.shape())
+            # box_target = box_target.transpose((1, 0, 2))
+            # box_mask = box_mask.transpose((1, 0, 2))
         return cls_target, box_target, box_mask
