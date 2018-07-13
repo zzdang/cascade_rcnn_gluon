@@ -110,3 +110,28 @@ class MaximumMatcher(gluon.HybridBlock):
         match = F.where(F.pick(x, argmax, axis=-1) >= self._threshold, argmax,
                         F.ones_like(argmax) * -1)
         return match
+
+
+class MaximumMatcher_Cascade(gluon.HybridBlock):
+    """A Matcher implementing maximum matching strategy.
+
+    Parameters
+    ----------
+    threshold : float
+        Matching threshold.
+
+    """
+    def __init__(self, threshold, threshold_hg):
+        super(MaximumMatcher_Cascade, self).__init__()
+        self._threshold = threshold
+        self._threshold_hg = threshold_hg
+    def hybrid_forward(self, F, x):
+        argmax = F.argmax(x, axis=-1)
+
+        mask_thresh = F.pick(x, argmax, axis=-1) >= self._threshold
+        mask_thresh_hg = F.pick(x, argmax, axis=-1) <= self._threshold_hg 
+        match = F.where( F.broadcast_logical_and(mask_thresh, mask_thresh_hg), \
+                          argmax ,  F.ones_like(argmax) * -1)
+        # match = F.where((F.pick(x, argmax, axis=-1) >= self._threshold) , 
+        #                 argmax,F.ones_like(argmax) * -1)
+        return match 

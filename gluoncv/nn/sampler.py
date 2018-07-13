@@ -270,15 +270,15 @@ class QuotaSamplerOp(mx.operator.CustomOp):
             # re-balance if number of postive or negative exceed limits
             result = result.asnumpy()
             num_pos = int((result > 0).sum())
-            if num_pos > max_pos:
+            if num_pos > max_pos and self._num_sample>0:
                 disable_indices = np.random.choice(
                     np.where(result > 0)[0], size=(num_pos - max_pos), replace=False)
                 result[disable_indices] = 0   # use 0 to ignore
             num_neg = int((result < 0).sum())
-            if self._fill_negative:
+            if self._fill_negative and self._num_sample>0:
                 # if pos_sample is less than quota, we can have negative samples filling the gap
                 max_neg = max(self._num_sample - min(num_pos, max_pos), max_neg)
-            if num_neg > max_neg:
+            if num_neg > max_neg and self._num_sample>0:
                 disable_indices = np.random.choice(
                     np.where(result < 0)[0], size=(num_neg - max_neg), replace=False)
                 result[disable_indices] = 0  # use 0 to ignore
