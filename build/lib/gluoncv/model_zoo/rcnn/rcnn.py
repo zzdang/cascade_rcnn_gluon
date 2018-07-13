@@ -8,7 +8,7 @@ from ...nn.bbox import BBoxCornerToCenter
 from ...nn.coder import NormalizedBoxCenterDecoder, MultiPerClassDecoder
 
 
-class RCNN2(gluon.HybridBlock):
+class RCNN(gluon.HybridBlock):
     """RCNN network.
 
     Parameters
@@ -52,7 +52,7 @@ class RCNN2(gluon.HybridBlock):
     """
     def __init__(self, features, top_features, classes, roi_mode, roi_size,
                  nms_thresh=0.3, nms_topk=400, post_nms=100, train_patterns=None, **kwargs):
-        super(RCNN2, self).__init__(**kwargs)
+        super(RCNN, self).__init__(**kwargs)
         self.classes = classes
         self.num_class = len(classes)
         assert self.num_class > 0, "Invalid number of class : {}".format(self.num_class)
@@ -72,7 +72,7 @@ class RCNN2(gluon.HybridBlock):
             self.class_predictor = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
             self.box_predictor = nn.Dense(
-                1 * 4, weight_initializer=mx.init.Normal(0.001))
+                self.num_class * 4, weight_initializer=mx.init.Normal(0.001))
             self.cls_decoder = MultiPerClassDecoder(num_class=self.num_class+1)
             self.box_to_center = BBoxCornerToCenter()
             self.box_decoder = NormalizedBoxCenterDecoder()

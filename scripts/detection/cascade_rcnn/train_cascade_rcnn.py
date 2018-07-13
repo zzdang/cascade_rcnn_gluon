@@ -460,7 +460,7 @@ if __name__ == '__main__':
     # network
     net_name = '_'.join(('cascade_rcnn', args.network, args.dataset))
     args.save_prefix += net_name
-
+    print(net_name)
     net = get_model(net_name, pretrained_base=True)
     if args.resume.strip():
         net.load_params(args.resume.strip())
