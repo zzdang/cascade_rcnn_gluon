@@ -100,7 +100,7 @@ class RCNNTargetGenerator(gluon.Block):
         Only support batch_size=1 now.
         """
         with autograd.pause():
-            # cls_target = self._cls_encoder(samples, matches, gt_label)
+            cls_target = self._cls_encoder(samples, matches, gt_label)
             # box_target, box_mask = self._box_encoder(samples, matches, roi, gt_box)
             box_target, box_mask = self._box_encoder(
                samples, matches, roi, gt_label, gt_box)
