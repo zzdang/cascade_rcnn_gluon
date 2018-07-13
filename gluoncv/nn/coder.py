@@ -107,18 +107,6 @@ class NormalizedPerClassBoxCenterEncoder(gluon.Block):
         return all_targets, all_masks
 
 class NormalizedBoxCenterEncoder_Cascade(gluon.Block):
-    """Encode bounding boxes training target with normalized center offsets.
-
-    Input bounding boxes are using corner type: `x_{min}, y_{min}, x_{max}, y_{max}`.
-
-    Parameters
-    ----------
-    stds : array-like of size 4
-        Std value to be divided from encoded values, default is (0.1, 0.1, 0.2, 0.2).
-    means : array-like of size 4
-        Mean value to be subtracted from encoded values, default is (0., 0., 0., 0.).
-
-    """
     def __init__(self, num_class, stds=(0.1, 0.1, 0.2, 0.2), means=(0., 0., 0., 0.)):
         super(NormalizedBoxCenterEncoder_Cascade, self).__init__()
         assert len(stds) == 4, "Box Encoder requires 4 std values."
