@@ -504,7 +504,7 @@ if __name__ == '__main__':
     # training data
     train_dataset, val_dataset, eval_metric = get_dataset(args.dataset, args)
     train_data, val_data = get_dataloader(
-        net, train_dataset, val_dataset, args.batch_size, args.num_workers)
+        net, train_dataset, val_dataset, args.short, args.max_size, args.batch_size, args.num_workers)
 
     # training
     train(net, train_data, val_data, eval_metric, args)
