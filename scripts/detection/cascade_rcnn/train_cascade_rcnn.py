@@ -229,8 +229,8 @@ def validate(net, val_data, ctx, eval_metric):
     eval_metric.reset()
     # set nms threshold and topk constraint
     net.set_nms(nms_thresh=0.3, nms_topk=400)
-    net.hybridize()
-    for idx, batch in tqdm(enumerate(val_data),  total=2476):
+    net.hybridize(static_alloc=True)
+    for batch in val_data:
         batch = split_and_load(batch, ctx_list=ctx)
         det_bboxes = []
         det_ids = []
@@ -246,25 +246,18 @@ def validate(net, val_data, ctx, eval_metric):
             # clip to image size
             det_bboxes.append(mx.nd.Custom(bboxes, x, op_type='bbox_clip_to_image').expand_dims(0))
             # rescale to original resolution
-            det_bboxes[-1] *= im_scale.reshape((-1)).asscalar()
+            im_scale = im_scale.reshape((-1)).asscalar()
+            det_bboxes[-1] *= im_scale
             # split ground truths
             gt_ids.append(y.slice_axis(axis=-1, begin=4, end=5))
             gt_bboxes.append(y.slice_axis(axis=-1, begin=0, end=4))
+            gt_bboxes[-1] *= im_scale
             gt_difficults.append(y.slice_axis(axis=-1, begin=5, end=6) if y.shape[-1] > 5 else None)
 
         # update metric
         for det_bbox, det_id, det_score, gt_bbox, gt_id, gt_diff in zip(det_bboxes, det_ids, det_scores, gt_bboxes, gt_ids, gt_difficults):
             eval_metric.update(det_bbox, det_id, det_score, gt_bbox, gt_id, gt_diff)
     return eval_metric.get()
- 
-
-    num_rcnn_pos = (cls_targets >= 0).sum()
-    rcnn_loss1 = rcnn_cls_loss(cls_pred, cls_targets, cls_targets >= 0) * cls_targets.size / cls_targets.shape[0] / num_rcnn_pos
-    rcnn_loss2 = rcnn_box_loss(box_pred, box_targets, box_masks) * box_pred.size / box_pred.shape[0] / num_rcnn_pos
-    rcnn_loss = rcnn_loss1 + rcnn_loss2
-
-
-
  
 
 def get_rcnn_cls_loss(cls_pred, cls_targets):
