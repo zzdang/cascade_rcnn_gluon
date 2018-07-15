@@ -647,7 +647,7 @@ def cascade_rcnn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
     # print(features.collect_params())
     # print(top_features.collect_params())
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
-    return get_cascade_rcnn('vgg16', features, top_features, scales=( 16, 32,64),
+    return get_cascade_rcnn('vgg16', features, top_features, scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(7, 7), stride=16,
                            rpn_channel=1024, train_patterns=train_patterns,

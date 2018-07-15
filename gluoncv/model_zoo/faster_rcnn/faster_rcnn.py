@@ -451,7 +451,7 @@ def faster_rcnn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
     print(features)
  
     train_patterns = '|'.join(['.*dense', '.*rpn', '.*stage(2|3|4)_conv'])
-    return get_faster_rcnn('vgg16', features, top_features, scales=( 16, 32,64),
+    return get_faster_rcnn('vgg16', features, top_features, scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(7, 7), stride=16,
                            rpn_channel=1024, train_patterns=train_patterns,
