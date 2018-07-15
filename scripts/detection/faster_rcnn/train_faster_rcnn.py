@@ -345,6 +345,7 @@ def train(net, train_data, val_data, eval_metric, args):
                     num_rpn_pos = (rpn_cls_targets >= 0).sum()
                     rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
                     rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
+                    # rpn_loss2 = nd.sum(rpn_box_masks*nd.smooth_l1((rpn_box -rpn_box_targets) , scalar=3.0))
                     # rpn overall loss, use sum rather than average
                     rpn_loss = rpn_loss1 + rpn_loss2
                     # generate targets for rcnn
