@@ -1,6 +1,8 @@
 # forked from https://github.com/zhreshold/gluon-cv
-# Gluon CV Toolkit
-
+# training for faster rcnn(vgg16)
+python scripts/detection/faster_rcnn/train_faster_rcnn.py --network vgg16
+# training for cascade rcnn(vgg16)
+python scripts/detection/cascade_rcnn/train_cascade_rcnn.py --network vgg16
 [![Build Status](http://ci.mxnet.io/job/gluon-cv/job/master/badge/icon)](http://ci.mxnet.io/job/gluon-cv/job/master/)
 [![GitHub license](http://dmlc.github.io/img/apache2.svg)](./LICENSE)
 [![Code Coverage](http://gluon-cv.mxnet.io/coverage.svg?)](http://gluon-cv.mxnet.io/coverage.svg)
