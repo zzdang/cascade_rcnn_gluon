@@ -613,7 +613,6 @@ def cascade_rcnn_resnet50_v2_voc(pretrained=False, pretrained_base=True, **kwarg
 
 
 
-
 def cascade_rcnn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
     r"""Faster RCNN model from the paper
     "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
@@ -649,6 +648,45 @@ def cascade_rcnn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
     return get_cascade_rcnn('vgg16', features, top_features, scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
+                           roi_mode='align', roi_size=(7, 7), stride=16,
+                           rpn_channel=1024, train_patterns=train_patterns,
+                           pretrained=pretrained, **kwargs)
+
+def cascade_rcnn_vgg16_coco(pretrained=False, pretrained_base=True, **kwargs):
+    r"""Faster RCNN model from the paper
+    "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
+    real-time object detection with region proposal networks"
+
+    Parameters
+    ----------
+    pretrained : bool, optional, default is False
+        Load pretrained weights.
+    pretrained_base : bool, optional, default is True
+        Load pretrained base network, the extra layers are randomized. Note that
+        if pretrained is `Ture`, this has no effect.
+    ctx : Context, default CPU
+        The context in which to load the pretrained weights.
+    root : str, default '~/.mxnet/models'
+        Location for keeping the model parameters.
+
+    Examples
+    --------
+    >>> model = get_cascade_rcnn_resnet50_v2_voc(pretrained=True)
+    >>> print(model)
+    """
+
+    from ...data import COCODetection
+    classes = COCODetection.CLASSES
+    pretrained_base = False if pretrained else pretrained_base
+    base_network = mx.gluon.model_zoo.vision.get_model('vgg16', pretrained=pretrained_base)
+    features = base_network.features[:30]
+    top_features =base_network.features[31:]
+    # print("~~~~~")
+    # print(features.collect_params())
+    # print(top_features.collect_params())
+    train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
+    return get_cascade_rcnn('vgg16', features, top_features, scales=( 8,16, 32),
+                           ratios=(0.5, 1, 2), classes=classes, dataset='coco',
                            roi_mode='align', roi_size=(7, 7), stride=16,
                            rpn_channel=1024, train_patterns=train_patterns,
                            pretrained=pretrained, **kwargs)
