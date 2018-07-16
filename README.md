@@ -36,3 +36,10 @@ VGG-RPN-baseline     | 2 | 2    |1e-3|  16  |  10  | 72.3
 - [Object Detection](http://gluon-cv.mxnet.io/build/examples_detection/index.html)
 
 - [Semantic Segmentation](http://gluon-cv.mxnet.io/build/examples_segmentation/index.html)
+
+
+### To do list
+
+- [x] Add VGG to faster-RCNN
+- [ ] Train Cascade-RCNN with VGG16 backbone 
+
