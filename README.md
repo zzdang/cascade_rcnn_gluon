@@ -12,9 +12,10 @@ edited by Yuerong Chen and Ning Li
 
 ## Benchmarking
 1. PASCAL VOC 2007 (Train/Test: 2007+2012trainval/2007test, shorter size: 600)
-model     | #GPUs | bs | lr | epoch | decay | AP50 |
----------|--------|-----|--------|------|------|-----|----- 
-VGG-RPN-baseline     | 2 | 2    |1e-3|16 |10 | 72.3  |
+
+model     | #GPUs | bs | lr | epoch | decay | AP50 
+---------|--------|-----|--------|------|------|-----
+VGG-RPN-baseline     | 2 | 2    |1e-3|  16  |  10  | 72.3  
 
 ## Training Cascade-RCNN
 
