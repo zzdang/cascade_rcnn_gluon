@@ -1,13 +1,3 @@
-# forked from https://github.com/zhreshold/gluon-cv
-
-# training for faster rcnn(vgg16)
-python scripts/detection/faster_rcnn/train_faster_rcnn.py --network vgg16
-
-# training for cascade rcnn(vgg16)
-python scripts/detection/cascade_rcnn/train_cascade_rcnn.py --network vgg16
-
-
-
 [![Build Status](http://ci.mxnet.io/job/gluon-cv/job/master/badge/icon)](http://ci.mxnet.io/job/gluon-cv/job/master/)
 [![GitHub license](http://dmlc.github.io/img/apache2.svg)](./LICENSE)
 [![Code Coverage](http://gluon-cv.mxnet.io/coverage.svg?)](http://gluon-cv.mxnet.io/coverage.svg)
@@ -15,16 +5,28 @@ python scripts/detection/cascade_rcnn/train_cascade_rcnn.py --network vgg16
 
 | [Installation](http://gluon-cv.mxnet.io) | [Documentation](http://gluon-cv.mxnet.io) | [Tutorials](http://gluon-cv.mxnet.io) |
 
-GluonCV provides implementations of the state-of-the-art (SOTA) deep learning models in computer vision.
 
-It is designed for engineers, researchers, and
-students to fast prototype products and research ideas based on these
-models. This toolkit offers four main features:
+# Cascade R-CNN 
+## forked from [gluon-cv](https://github.com/zhreshold/gluon-cv)
+edited by Yuerong Chen and Ning Li
 
-1. Training scripts to reproduce SOTA results reported in research papers
-2. A large number of pre-trained models
-3. Carefully designed APIs that greatly reduce the implementation complexity
-4. Community supports
+## Benchmarking
+1. PASCAL VOC 2007 (Train/Test: 2007+2012trainval/2007test, shorter size: 600)
+model     | #GPUs | bs | lr | epoch | decay | AP50 |
+---------|--------|-----|--------|------|------|-----|----- 
+VGG-RPN-baseline     | 2 | 2    |1e-3|16 |10 | 72.3  |
+
+## Training Cascade-RCNN
+
+1. training for faster rcnn(vgg16)
+    ```Shell
+	python scripts/detection/faster_rcnn/train_faster_rcnn.py --network vgg16
+    ```
+2. training for cascade rcnn(vgg16)
+    ```Shell
+	python scripts/detection/cascade_rcnn/train_cascade_rcnn.py --network vgg16
+    ```
+
 
 ## Examples
 
