@@ -41,5 +41,7 @@ VGG-RPN-baseline     | 2 | 2    |1e-3|  16  |  10  | 72.3
 ## To Do List
 
 - [x] Add VGG to faster-RCNN
-- [ ] Train Cascade-RCNN with VGG16 backbone 
+- [ ] Train Cascade-RCNN with VGG16 backbone
+- [ ] Add VGG prune to faster-RCNN and cascade_rcnn
+- [ ] Train faster-RCNN and Cascade-RCNN with resnet50 backbone 
 
