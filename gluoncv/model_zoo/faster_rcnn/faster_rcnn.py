@@ -447,8 +447,6 @@ def faster_rcnn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
     base_network = mx.gluon.model_zoo.vision.get_model('vgg16', pretrained=pretrained_base)
     features = base_network.features[:30]
     top_features =base_network.features[31:]
-    print("-------------")
-    print(features)
  
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
     return get_faster_rcnn('vgg16', features, top_features, scales=( 8,16, 32),

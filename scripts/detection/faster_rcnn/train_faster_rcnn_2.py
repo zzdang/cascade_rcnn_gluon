@@ -267,8 +267,9 @@ def get_lr_at_iter(alpha):
 def train(net, train_data, val_data, eval_metric, args):
     """Training pipeline"""
     net.collect_params().reset_ctx(ctx)
+    net.collect_train_params().setattr('grad_req','add')
     trainer = gluon.Trainer(
-        net.collect_train_params().setattr('grad_req','add'),  # fix batchnorm, fix first stage, etc...
+        net.collect_train_params(),  # fix batchnorm, fix first stage, etc...
         'sgd',
         {'learning_rate': args.lr,
          'wd': args.wd,
@@ -347,6 +348,7 @@ def train(net, train_data, val_data, eval_metric, args):
                     rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
                     # rpn_loss2 = nd.sum(rpn_box_masks*nd.smooth_l1((rpn_box -rpn_box_targets) , scalar=3.0))
                     # rpn overall loss, use sum rather than average
+                    #losses = []
                     rpn_loss = rpn_loss1 + rpn_loss2
                     # generate targets for rcnn
                     cls_targets, box_targets, box_masks = net.target_generator(roi, samples, matches, gt_label, gt_box)
@@ -366,34 +368,14 @@ def train(net, train_data, val_data, eval_metric, args):
                     add_losses[2].append([[cls_targets], [cls_pred]])
                     add_losses[3].append([[box_targets, box_masks], [box_pred]])
                 autograd.backward(losses)
-                for data, label, rpn_cls_targets, rpn_box_targets, rpn_box_masks in zip(*batch):
-                    gt_label = label[:, :, 4:5]
-                    gt_box = label[:, :, :4]
-                    cls_pred, box_pred, roi, samples, matches, rpn_score, rpn_box, anchors = net(data, gt_box)
-                    # losses of rpn
-                    rpn_score = rpn_score.squeeze(axis=-1)
-                    num_rpn_pos = (rpn_cls_targets >= 0).sum()
-                    rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
-                    rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
-                    # rpn_loss2 = nd.sum(rpn_box_masks*nd.smooth_l1((rpn_box -rpn_box_targets) , scalar=3.0))
-                    # rpn overall loss, use sum rather than average
-                    rpn_loss = rpn_loss1 + rpn_loss2
-                    # generate targets for rcnn
-                    cls_targets, box_targets, box_masks = net.target_generator(roi, samples, matches, gt_label, gt_box)
-                    # losses of rcnn
-                    num_rcnn_pos = (cls_targets >= 0).sum()
-                    rcnn_loss1 = rcnn_cls_loss(cls_pred, cls_targets, cls_targets >= 0) * cls_targets.size / cls_targets.shape[0] / num_rcnn_pos
-                    rcnn_loss2 = rcnn_box_loss(box_pred, box_targets, box_masks) * box_pred.size / box_pred.shape[0] / num_rcnn_pos
-                    rcnn_loss = rcnn_loss1 + rcnn_loss2
-                    # overall losses
-                    losses.append(rpn_loss.sum() + rcnn_loss.sum())
-                autograd.backward(losses)
                 for metric, record in zip(metrics, metric_losses):
                     metric.update(0, record)
                 for metric, records in zip(metrics2, add_losses):
                     for pred in records:
                         metric.update(pred[0], pred[1])
-            trainer.step(batch_size*2)
+            print("~~~~~")
+            print(batch_size)
+            trainer.step(batch_size)
             # update metrics
             if args.log_interval and not (i + 1) % args.log_interval:
                 # msg = ','.join(['{}={:.3f}'.format(*metric.get()) for metric in metrics])
@@ -401,7 +383,6 @@ def train(net, train_data, val_data, eval_metric, args):
                 logger.info('[Epoch {}][Batch {}], Speed: {:.3f} samples/sec, {}'.format(
                     epoch, i, batch_size/(time.time()-btic), msg))
             btic = time.time()
-
         msg = ','.join(['{}={:.3f}'.format(*metric.get()) for metric in metrics])
         logger.info('[Epoch {}] Training cost: {:.3f}, {}'.format(
             epoch, (time.time()-tic), msg))

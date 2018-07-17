@@ -98,6 +98,7 @@ class RCNN2(gluon.HybridBlock):
         """
         if select is None:
             return self.collect_params(self.train_patterns)
+        self.collect_train_params().setattr('grad_req','add')
         return self.collect_params(select)
 
     def set_nms(self, nms_thresh=0.3, nms_topk=400, post_nms=100):
