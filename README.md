@@ -15,7 +15,7 @@ edited by Yuerong Chen and Ning Li
 
 model     | #GPUs | bs | lr | epoch | decay | AP50 
 ---------|--------|-----|--------|------|------|-----
-VGG-RPN-baseline     | 2 | 2    |1e-3|  20  |  10  | 72.3  
+VGG-RPN-baseline     | 2 | 2    |1e-3|  30  |  14  | 73.6  
 VGG-RPN-cascade      | 2 | 2    |1e-3|  20  |  14  | 75.3
 
 ## Training Cascade-RCNN

@@ -15,7 +15,8 @@ __all__ = ['FasterRCNN', 'get_faster_rcnn',
            'faster_rcnn_resnet50_v2a_voc',
            'faster_rcnn_resnet50_v2a_coco',
            'faster_rcnn_resnet50_v2_voc',
-           'faster_rcnn_vgg16_voc']
+           'faster_rcnn_vgg16_voc',
+           'faster_rcnn_vgg_prune_voc']
 
 
 class FasterRCNN(RCNN):
@@ -447,7 +448,27 @@ def faster_rcnn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
     base_network = mx.gluon.model_zoo.vision.get_model('vgg16', pretrained=pretrained_base)
     features = base_network.features[:30]
     top_features =base_network.features[31:]
- 
+    # print(top_features)
+    # print(base_network)
+    train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
+    return get_faster_rcnn('vgg16', features, top_features, scales=( 8,16, 32),
+                           ratios=(0.5, 1, 2), classes=classes, dataset='voc',
+                           roi_mode='align', roi_size=(7, 7), stride=16,
+                           rpn_channel=1024, train_patterns=train_patterns,
+                           pretrained=pretrained, **kwargs)
+
+def faster_rcnn_vgg_prune_voc(pretrained=False, pretrained_base=True, **kwargs):
+
+    from .vgg_prune import vgg_prune
+    from ...data import VOCDetection
+    classes = VOCDetection.CLASSES
+    pretrained_base = False if pretrained else pretrained_base
+    base_network = mx.gluon.model_zoo.vision.get_model('vgg16', pretrained=pretrained_base)
+    print(base_network)
+    base_network = vgg_prune(pretrained=pretrained_base)
+    features = base_network.features[:30]
+    top_features =base_network.features[31:]
+    print(top_features)
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
     return get_faster_rcnn('vgg16', features, top_features, scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
