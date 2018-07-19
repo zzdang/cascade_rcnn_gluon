@@ -18,7 +18,7 @@ __all__ = ['CascadeRCNN', 'get_cascade_rcnn',
            'cascade_rcnn_resnet50_v2a_coco',
            'cascade_rcnn_resnet50_v2_voc',
            'cascade_rcnn_vgg16_voc',
-           'cascade_rcnn_vgg_prune_voc']
+           'cascade_rcnn_vgg16_pruned_voc']
 
 
 class CascadeRCNN(RCNN2):
@@ -312,13 +312,12 @@ class CascadeRCNN(RCNN2):
             cls_pred_2nd, box_pred_2nd, *_ = self.cascade_rcnn(F=F, feature=feat, roi=roi_2nd, sampler=self.sampler_3rd, gt_box=gt_box)
             roi_3rd = self.decode_bbox(source_bbox=roi_2nd, encoded_bbox=box_pred_2nd, stds=(.033, .033, .067, .067))
             cls_pred_3rd, box_pred_3rd, *_ = self.cascade_rcnn(F=F, feature=feat, roi=roi_3rd, sampler=self.sampler_3rd, gt_box=gt_box)
- 
-            # bboxes = self.box_decoder(box_pred, self.box_to_center(rpn_box)).split(
-            #     axis=0, num_outputs=self.num_class, squeeze_axis=True)
-            # cls_ids, scores = self.cls_decoder(F.softmax(cls_pred, axis=-1))
-            
-            bboxes = self.box_decoder_3rd(box_pred_3rd, self.box_to_center(roi_3rd)).split(
+             
+            bboxes = self.box_decoder_3rd(box_pred_3rd, self.box_to_center(roi_3rd))
+
+            bboxes = bboxes.split(
                 axis=0, num_outputs=1, squeeze_axis=True)
+
             cls_prob_3rd = F.softmax(cls_pred_3rd, axis=-1)
             cls_prob_2nd = F.softmax(cls_pred_2nd, axis=-1)
             cls_prob_1st = F.softmax(cls_pred, axis=-1)
@@ -329,8 +328,7 @@ class CascadeRCNN(RCNN2):
                 cls_id = cls_ids.slice_axis(axis=-1, begin=i, end=i+1)
                 score = scores.slice_axis(axis=-1, begin=i, end=i+1)
                 # per class results
-                bg_fg_bool=0 # min(i,0)
-                per_result = F.concat(*[cls_id, score, bboxes[bg_fg_bool]], dim=-1)
+                per_result = F.concat(*[cls_id, score, bboxes], dim=-1)
 
                 results.append(per_result)
             result = F.concat(*results, dim=0).expand_dims(0)
@@ -691,17 +689,17 @@ def cascade_rcnn_vgg16_coco(pretrained=False, pretrained_base=True, **kwargs):
                            roi_mode='align', roi_size=(7, 7), stride=16,
                            rpn_channel=1024, train_patterns=train_patterns,
                            pretrained=pretrained, **kwargs)
-def cascade_rcnn_vgg_prune_voc(pretrained=False, pretrained_base=True, **kwargs):
+def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwargs):
 
-    from .vgg_prune import vgg_prune
+    from .vgg16_pruned import vgg16_pruned
     from ...data import VOCDetection
     classes = VOCDetection.CLASSES
     pretrained_base = False if pretrained else pretrained_base
-    base_network = vgg_prune(pretrained=pretrained_base)
+    base_network = vgg16_pruned(pretrained=pretrained_base)
     features = base_network.features[:30]
     top_features =base_network.features[31:]
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
-    return get_cascade_rcnn('vgg_prune', features, top_features, scales=( 8,16, 32),
+    return get_cascade_rcnn('vgg16_pruned', features, top_features, scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(7, 7), stride=16,
                            rpn_channel=1024, train_patterns=train_patterns,

@@ -119,7 +119,7 @@ if __name__ == '__main__':
     args.batch_size = len(ctx)  # 1 batch per device
 
     # network
-    net_name = '_'.join(('faster_rcnn', args.network, args.dataset))
+    net_name = '_'.join(('cascade_rcnn', args.network, args.dataset))
     args.save_prefix += net_name
     if args.pretrained.lower() in ['true', '1', 'yes', 't']:
         net = gcv.model_zoo.get_model(net_name, pretrained=True)

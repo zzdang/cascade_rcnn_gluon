@@ -3,7 +3,7 @@ from mxnet.gluon import nn, HybridBlock
 from mxnet.initializer import Xavier
 import os
 __all__ = ['VGG','get_vgg',
-           'vgg_prune']
+           'vgg16_pruned']
 
 class VGG(HybridBlock):
     r"""VGG model from the `"Very Deep Convolutional Networks for Large-Scale Image Recognition"
@@ -88,13 +88,13 @@ def get_vgg(num_layers, pretrained=False, ctx=mx.cpu(0),
     if pretrained:
         from ..model_store import get_model_file
         batch_norm_suffix = '_bn' if kwargs.get('batch_norm') else ''
-        net.load_parameters('/media/han/6f586f18-792a-40fd-ada6-59702fb5dabc/model/VGG_16_fc2048_prune.params',\
+        net.load_parameters('./models/VGG_16_fc2048_prune.params',\
          ctx=ctx)
         for v in net.collect_params(select='init_scale|init_mean').values():
             v.initialize(force_reinit=True, ctx=ctx)
     return net
 
-def vgg_prune(**kwargs):
+def vgg16_pruned(**kwargs):
     r"""VGG-16 model from the `"Very Deep Convolutional Networks for Large-Scale Image Recognition"
     <https://arxiv.org/abs/1409.1556>`_ paper.
 
