@@ -150,32 +150,6 @@ class CascadeRCNN(RCNN2):
             roi = roi.reshape((1,-1, 4))
             return roi
 
-
-
-    def cascade_rcnn_org(self, F, feature, roi):
-        """Forward Faster-RCNN network.
-
-        The behavior during traing and inference is different.
-
-        Parameters
-        ----------
-        feature: feature map
-        roi: ROI region to be pooled (decoded bbox)
-
-
-        Returns
-        -------
-        box_pred:  bbox prediction(encoded bbox) 
-        cls_pred:  cls prediction
-
-        """
-        pooled_feat = self.extract_ROI(F=F, feature=feature, bbox=roi)
-        top_feat = self.top_features(pooled_feat)
-        cls_pred = self.class_predictor(top_feat)
-        box_pred = self.box_predictor(top_feat).reshape((-1, 1, 4)).transpose((1, 0, 2))
-        return cls_pred, box_pred
-
-
     def cascade_rcnn(self, F, feature, roi, sampler, gt_box):
         """Forward Faster-RCNN network.
 
@@ -212,8 +186,6 @@ class CascadeRCNN(RCNN2):
         else:
             return cls_pred, box_pred, None
 
-
-
     def cascade_rcnn(self, F, feature, roi, sampler, gt_box):
         """Forward Faster-RCNN network.
 
@@ -249,7 +221,6 @@ class CascadeRCNN(RCNN2):
             return cls_pred, box_pred, sample_data
         else:
             return cls_pred, box_pred, None
-
 
     # pylint: disable=arguments-differ
     def hybrid_forward(self, F, x, gt_box=None):
