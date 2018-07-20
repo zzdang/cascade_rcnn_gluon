@@ -33,6 +33,24 @@ class VGG(HybridBlock):
                                        weight_initializer='normal',
                                        bias_initializer='zeros'))
             self.features.add(nn.Dropout(rate=0.5))
+            # cascade 2nd
+            self.features.add(nn.Dense(2048, activation='relu',
+                                       weight_initializer='normal',
+                                       bias_initializer='zeros'))
+            self.features.add(nn.Dropout(rate=0.5))
+            self.features.add(nn.Dense(2048, activation='relu',
+                                       weight_initializer='normal',
+                                       bias_initializer='zeros'))
+            self.features.add(nn.Dropout(rate=0.5))
+            # cascade 3rd
+            self.features.add(nn.Dense(2048, activation='relu',
+                                       weight_initializer='normal',
+                                       bias_initializer='zeros'))
+            self.features.add(nn.Dropout(rate=0.5))
+            self.features.add(nn.Dense(2048, activation='relu',
+                                       weight_initializer='normal',
+                                       bias_initializer='zeros'))
+            self.features.add(nn.Dropout(rate=0.5))
             # self.output = nn.Dense(classes,
             #                        weight_initializer='normal',
             #                        bias_initializer='zeros')
@@ -88,7 +106,7 @@ def get_vgg(num_layers, pretrained=False, ctx=mx.cpu(0),
     if pretrained:
         from ..model_store import get_model_file
         batch_norm_suffix = '_bn' if kwargs.get('batch_norm') else ''
-        net.load_parameters('./models/VGG_16_fc2048_prune.params',\
+        net.load_parameters('./models/VGG_16_fc2048_prune_cascade.params',\
          ctx=ctx)
         for v in net.collect_params(select='init_scale|init_mean').values():
             v.initialize(force_reinit=True, ctx=ctx)

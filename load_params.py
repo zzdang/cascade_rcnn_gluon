@@ -37,10 +37,20 @@ def update_key(k):
 
 
 filename ='/media/han/6f586f18-792a-40fd-ada6-59702fb5dabc/model/VGG_16_fc2048_prune-0000.params'
-filename1 ='/media/han/6f586f18-792a-40fd-ada6-59702fb5dabc/model/VGG_16_fc2048_prune.params'
+filename1 ='/media/han/6f586f18-792a-40fd-ada6-59702fb5dabc/model/VGG_16_fc2048_prune_cascade.params'
 loaded = [(k[4:] if k.startswith('arg:') or k.startswith('aux:') else k, v) \
           for k, v in mx.nd.load(filename).items()]
-
+# arg_dict = { k: v for k, v in loaded}
+# print(arg_dict.keys())
 arg_dict = {update_key(k): v for k, v in loaded}
+print(arg_dict.keys())
+arg_dict['dense2_weight']= arg_dict['dense0_weight']
+arg_dict['dense2_bias']= arg_dict['dense0_bias']
+arg_dict['dense3_weight']= arg_dict['dense1_weight']
+arg_dict['dense3_bias']= arg_dict['dense1_bias']
+arg_dict['dense4_weight']= arg_dict['dense0_weight']
+arg_dict['dense4_bias']= arg_dict['dense0_bias']
+arg_dict['dense5_weight']= arg_dict['dense1_weight']
+arg_dict['dense5_bias']= arg_dict['dense1_bias']
 print(arg_dict.keys())
 mx.nd.save(filename1, arg_dict)

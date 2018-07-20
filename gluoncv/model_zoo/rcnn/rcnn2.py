@@ -50,7 +50,7 @@ class RCNN2(gluon.HybridBlock):
         Matching pattern for trainable parameters.
 
     """
-    def __init__(self, features, top_features, classes, roi_mode, roi_size,
+    def __init__(self, features, top_features,top_features_2nd,top_features_3rd, classes, roi_mode, roi_size,
                  nms_thresh=0.3, nms_topk=400, post_nms=100, train_patterns=None, **kwargs):
         super(RCNN2, self).__init__(**kwargs)
         self.classes = classes
@@ -76,6 +76,18 @@ class RCNN2(gluon.HybridBlock):
             self.cls_decoder = MultiPerClassDecoder(num_class=self.num_class+1)
             self.box_to_center = BBoxCornerToCenter()
             self.box_decoder = NormalizedBoxCenterDecoder()
+            # cascade 2nd and 3rd rcnn
+            self.top_features_2nd = top_features_2nd
+            self.class_predictor_2nd = nn.Dense(
+                self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
+            self.box_predictor_2nd = nn.Dense(
+                1 * 4, weight_initializer=mx.init.Normal(0.001))
+            self.top_features_3rd = top_features_3rd
+            self.class_predictor_3rd = nn.Dense(
+                self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
+            self.box_predictor_3rd = nn.Dense(
+                1 * 4, weight_initializer=mx.init.Normal(0.001))
+
 
     def collect_train_params(self, select=None):
         """Collect trainable params.
