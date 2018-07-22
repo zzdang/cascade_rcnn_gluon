@@ -351,6 +351,8 @@ def train(net, train_data, val_data, eval_metric, args):
                     for ix in range (data_.shape[0]):
                         data =data_[ix:ix+1];label=label_[ix:ix+1];rpn_cls_targets=rpn_cls_targets_[ix:ix+1];
                         rpn_box_targets=rpn_box_targets_[ix:ix+1]; rpn_box_masks =rpn_box_masks_[ix:ix+1]
+                        idx= label[0,:,0]>-1
+                        label=label[:,idx,:]
                         gt_label = label[:, :, 4:5]
                         gt_box = label[:, :, :4]
                         cls_pred, box_pred, roi, samples, matches, rpn_score, rpn_box, anchors = net(data, gt_box)
