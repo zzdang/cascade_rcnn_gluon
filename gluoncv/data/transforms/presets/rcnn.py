@@ -126,7 +126,9 @@ class FasterRCNNDefaultTrainTransform(object):
         """Apply transform to training image/label."""
         # resize shorter side but keep in max_size
         h, w, _ = src.shape
-        img = timage.resize_short_within(src, self._short, self._max_size)
+        interp = np.random.randint(0, 5)
+        img = timage.imresize(src, self._short, self._max_size, interp=interp)
+        #img = timage.resize_short_within(src, self._short, self._max_size)
         bbox = tbbox.resize(label, (w, h), (img.shape[1], img.shape[0]))
 
         # random horizontal flip
@@ -148,7 +150,10 @@ class FasterRCNNDefaultTrainTransform(object):
         gt_bboxes = mx.nd.array(bbox[np.newaxis, :, :4])
         cls_target, box_target, box_mask = self._target_generator(
             gt_bboxes, anchor, img.shape[2], img.shape[1])
-        return img, bbox.astype(img.dtype), cls_target[0], box_target[0], box_mask[0]
+        bbox_= mx.nd.zeros((100, 6))-1
+        bbox_[:bbox.shape[0],:]=bbox
+        bbox_= bbox_.astype(img.dtype)
+        return (img, bbox_, cls_target[0], box_target[0], box_mask[0])
 
 
 class FasterRCNNDefaultValTransform(object):
@@ -177,11 +182,16 @@ class FasterRCNNDefaultValTransform(object):
         """Apply transform to validation image/label."""
         # resize shorter side but keep in max_size
         h, w, _ = src.shape
-        img = timage.resize_short_within(src, self._short, self._max_size)
+        interp = np.random.randint(0, 5)
+        img = timage.imresize(src, self._short, self._max_size, interp=interp)
+        #img = timage.resize_short_within(src, self._short, self._max_size)
         # no scaling ground-truth, return image scaling ratio instead
         bbox = tbbox.resize(label, (w, h), (img.shape[1], img.shape[0]))
         im_scale = h / float(img.shape[0])
 
         img = mx.nd.image.to_tensor(img)
         img = mx.nd.image.normalize(img, mean=self._mean, std=self._std)
-        return img, bbox.astype('float32'), mx.nd.array([im_scale])
+        bbox_= mx.nd.zeros((100, 6))-1
+        bbox_[:bbox.shape[0],:]=bbox
+        bbox_= bbox_.astype('float32')
+        return img, bbox_, mx.nd.array([im_scale])

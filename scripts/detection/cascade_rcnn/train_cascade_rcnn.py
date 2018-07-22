@@ -21,7 +21,7 @@ from gluoncv.utils.metrics.voc_detection import VOC07MApMetric
 from gluoncv.utils.metrics.coco_detection import COCODetectionMetric
 from gluoncv.utils.metrics.accuracy import Accuracy
 from tqdm import tqdm
-
+from mxnet import ndarray
 def parse_args():
     parser = argparse.ArgumentParser(description='Train Faster-RCNN networks e2e.')
     parser.add_argument('--network', type=str, default='resnet50_v2a',
@@ -220,7 +220,14 @@ def split_and_load(batch, ctx_list):
     num_ctx = len(ctx_list)
     new_batch = []
     for i, data in enumerate(batch):
-        new_data = [x.as_in_context(ctx) for x, ctx in zip(data, ctx_list)]
+        #data=np.asarray(data)
+        if not isinstance(data, ndarray.NDArray):
+            data = ndarray.array(data, ctx=ctx_list[0])
+        if len(ctx_list) == 1:
+            return [data.as_in_context(ctx_list[0])]
+
+        slices = gluon.utils.split_data(data, len(ctx_list), 0, True)
+        new_data = [x.as_in_context(ctx) for x, ctx in zip(slices, ctx_list)]
         new_batch.append(new_data)
     return new_batch
 
@@ -304,6 +311,7 @@ def train(net, train_data, val_data, eval_metric, args):
 
 
     net.collect_params().reset_ctx(ctx)
+    net.collect_train_params().setattr('grad_req','add')
     trainer = gluon.Trainer(
         net.collect_train_params(),  # fix batchnorm, fix first stage, etc...
         'sgd',
@@ -380,8 +388,11 @@ def train(net, train_data, val_data, eval_metric, args):
                 if new_lr != trainer.learning_rate:
                     logger.info('[Epoch 0 Iteration {}] Set learning rate to {}'.format(i, new_lr))
                     trainer.set_learning_rate(new_lr)
-            batch = split_and_load(batch, ctx_list=ctx)
             batch_size = len(batch[0])
+            #print(batch[0])
+            print(batch_size)
+            #batch =split_and_load(batch, ctx_list=ctx)
+            batch =[gluon.utils.split_and_load(batch[it], ctx_list=ctx, batch_axis=0) for it in range(0,5)]
             losses = []
             metric_losses = [[] for _ in metrics]
             add_losses = [[] for _ in metrics2]
@@ -434,7 +445,7 @@ def train(net, train_data, val_data, eval_metric, args):
                     for loss_idx, loss in enumerate(addQ):
                         add_losses[loss_idx].append(loss)
  
-                autograd.backward(losses)
+                    autograd.backward(losses)
                 for metric, record in zip(metrics, metric_losses):
                     metric.update(0, record)
 
@@ -480,7 +491,7 @@ if __name__ == '__main__':
     # training contexts
     ctx = [mx.gpu(int(i)) for i in args.gpus.split(',') if i.strip()]
     ctx = ctx if ctx else [mx.cpu()]
-    args.batch_size = len(ctx)  # 1 batch per device
+    args.batch_size = len(ctx)*2  # 1 batch per device
 
     # network
     net_name = '_'.join(('cascade_rcnn', args.network, args.dataset))
