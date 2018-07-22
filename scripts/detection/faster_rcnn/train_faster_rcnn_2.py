@@ -357,7 +357,7 @@ def train(net, train_data, val_data, eval_metric, args):
                         gt_box = label[:, :, :4]
                         cls_pred, box_pred, roi, samples, matches, rpn_score, rpn_box, anchors = net(data, gt_box)
                         # losses of rpn
-                        losses = []
+                        #losses = []
                         rpn_score = rpn_score.squeeze(axis=-1)
                         num_rpn_pos = (rpn_cls_targets >= 0).sum()
                         rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
@@ -382,7 +382,7 @@ def train(net, train_data, val_data, eval_metric, args):
                         add_losses[1].append([[rpn_box_targets, rpn_box_masks], [rpn_box]])
                         add_losses[2].append([[cls_targets], [cls_pred]])
                         add_losses[3].append([[box_targets, box_masks], [box_pred]])
-                        autograd.backward(losses)
+                autograd.backward(losses)
                 for metric, record in zip(metrics, metric_losses):
                     metric.update(0, record)
                 for metric, records in zip(metrics2, add_losses):
