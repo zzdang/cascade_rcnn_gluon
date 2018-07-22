@@ -271,7 +271,7 @@ def get_lr_at_iter(alpha):
 def train(net, train_data, val_data, eval_metric, args):
     """Training pipeline"""
     net.collect_params().reset_ctx(ctx)
-    net.collect_train_params().setattr('grad_req','add')
+    #net.collect_train_params().setattr('grad_req','add')
     trainer = gluon.Trainer(
         net.collect_train_params(),  # fix batchnorm, fix first stage, etc...
         'sgd',
