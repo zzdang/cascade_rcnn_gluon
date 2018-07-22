@@ -245,6 +245,8 @@ def validate(net, val_data, ctx, eval_metric):
                 x=x_[ix:ix+1]
                 y=y_[ix:ix+1]
                 im_scale=im_scale_[ix:ix+1]
+                idx= y[0,:,0]>-1
+                y=y[:,idx,:]
                 # get prediction results
                 ids, scores, bboxes = net(x)
                 det_ids.append(ids.expand_dims(0))
@@ -336,11 +338,6 @@ def train(net, train_data, val_data, eval_metric, args):
                     logger.info('[Epoch 0 Iteration {}] Set learning rate to {}'.format(i, new_lr))
                     trainer.set_learning_rate(new_lr)
             batch_size = len(batch[0])
-            #print(mx.nd.concatenate(batch[0]))
-            #print(len(batch))
-            #data =mx.nd.concatenate(batch[0])
-            #batch = [mx.nd.concatenate(batch[0],axis=0) for it in range(len(batch))]
-            #print(mx.nd.concatenate(batch[1]))
             batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,5)] #split_and_load(batch, ctx_list=ctx)
             #data = gluon.utils.split_and_load(mx.nd.concatenate(batch[0]), ctx_list=ctx)
             losses = []
