@@ -193,7 +193,7 @@ def get_dataset(dataset, args):
 
 def get_dataloader(net, train_dataset, val_dataset, short, max_size, batch_size, num_workers):
     """Get dataloader."""
-    train_bfn = batchify.Tuple(*[batchify.Append() for _ in range(5)])
+    train_bfn = batchify.Tuple(*[batchify.Append() for _ in range(3)])
     train_loader = mx.gluon.data.DataLoader(
         train_dataset.transform(FasterRCNNDefaultTrainTransform(short, max_size, net)),
         batch_size, True, batchify_fn=train_bfn, last_batch='rollover', num_workers=num_workers)
@@ -338,23 +338,30 @@ def train(net, train_data, val_data, eval_metric, args):
                     logger.info('[Epoch 0 Iteration {}] Set learning rate to {}'.format(i, new_lr))
                     trainer.set_learning_rate(new_lr)
             batch_size = len(batch[0])
-            batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,5)] #split_and_load(batch, ctx_list=ctx)
+            batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,3)] #split_and_load(batch, ctx_list=ctx)
             #data = gluon.utils.split_and_load(mx.nd.concatenate(batch[0]), ctx_list=ctx)
             losses = []
             metric_losses = [[] for _ in metrics]
             add_losses = [[] for _ in metrics2]
             with autograd.record():
-                for data_, label_, rpn_cls_targets_, rpn_box_targets_, rpn_box_masks_ in zip(*batch):
+                for data_, label_, im_info_ in zip(*batch):
                     for ix in range (data_.shape[0]):
-                        data =data_[ix:ix+1];label=label_[ix:ix+1];rpn_cls_targets=rpn_cls_targets_[ix:ix+1];
-                        rpn_box_targets=rpn_box_targets_[ix:ix+1]; rpn_box_masks =rpn_box_masks_[ix:ix+1]
-                        idx= label[0,:,0]>-1
-                        label=label[:,idx,:]
+                        data =data_[ix:ix+1];label=label_[ix:ix+1];im_info=im_info_[ix:ix+1]
+                        #rpn_cls_targets=rpn_cls_targets_[ix:ix+1];rpn_box_targets=rpn_box_targets_[ix:ix+1]; rpn_box_masks =rpn_box_masks_[ix:ix+1]
+                        idx = np.where(label[0, :, 0].asnumpy() > -1)[0][-1]
+                        label=label[:,:idx+1,:]
                         gt_label = label[:, :, 4:5]
                         gt_box = label[:, :, :4]
+                        #print(im_info[0,1])
+                        data = data[:,:,:int(im_info[0,1].asnumpy()[0]),:int(im_info[0,0].asnumpy()[0])]
                         cls_pred, box_pred, roi, samples, matches, rpn_score, rpn_box, anchors = net(data, gt_box)
+                        # print([line for line in label[0, :, :] if line[0] > -1])
                         # losses of rpn
                         #losses = []
+                        #gt_bboxes = mx.nd.array(bbox[np.newaxis, :, :4])
+                        # sys.exit(0)
+                        rpn_cls_targets, rpn_box_targets, rpn_box_masks = net.rpn_target_generator(
+                                                            gt_box, anchors[0], im_info[0,0],im_info[0,1])
                         rpn_score = rpn_score.squeeze(axis=-1)
                         num_rpn_pos = (rpn_cls_targets >= 0).sum()
                         rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos

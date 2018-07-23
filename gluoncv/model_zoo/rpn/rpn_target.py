@@ -72,7 +72,7 @@ class RPNTargetGenerator(gluon.Block):
             ious[:, imask, :] = -1
             matches = self._matcher(ious)
             samples = self._sampler(matches, ious)
-
+            samples = samples.as_in_context(anchor.context)
             # training targets for RPN
             cls_target, _ = self._cls_encoder(samples)
             box_target, box_mask = self._box_encoder(

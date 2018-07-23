@@ -8,7 +8,7 @@ from mxnet.gluon import nn
 from .rcnn_target import RCNNTargetSampler, RCNNTargetGenerator
 from ..rcnn import RCNN
 from ..rpn import RPN
-
+from ..rpn import RPNTargetGenerator
 __all__ = ['FasterRCNN', 'get_faster_rcnn',
            'faster_rcnn_resnet50_v1b_voc',
            'faster_rcnn_resnet50_v1b_coco',
@@ -83,6 +83,10 @@ class FasterRCNN(RCNN):
         self._max_batch = 1  # currently only support batch size = 1
         self._max_roi = 100000  # maximum allowed ROIs
         self._target_generator = set([RCNNTargetGenerator(self.num_class)])
+        self._rpn_target_generator = set([RPNTargetGenerator(
+                                num_sample=256, pos_iou_thresh=0.7,
+                                neg_iou_thresh=0.3, pos_ratio=0.5,
+                                stds=(1., 1., 1., 1.))])
         with self.name_scope():
             self.rpn = RPN(rpn_channel, stride, scales=scales, ratios=ratios)
             self.sampler = RCNNTargetSampler(num_sample, pos_iou_thresh, neg_iou_thresh_high,
@@ -99,6 +103,17 @@ class FasterRCNN(RCNN):
 
         """
         return list(self._target_generator)[0]
+    @property
+    def rpn_target_generator(self):
+        """Returns stored target generator
+
+        Returns
+        -------
+        mxnet.gluon.HybridBlock
+            The RPN target generator
+
+        """
+        return list(self._rpn_target_generator)[0]
 
     # pylint: disable=arguments-differ
     def hybrid_forward(self, F, x, gt_box=None):
