@@ -245,8 +245,8 @@ def validate(net, val_data, ctx, eval_metric):
                 x=x_[ix:ix+1]
                 y=y_[ix:ix+1]
                 im_scale=im_scale_[ix:ix+1]
-                idx= y[0,:,0]>-1
-                y=y[:,idx,:]
+                idx = np.where(y[0, :, 0].asnumpy() > -1)[0][-1]
+                y=y[:,:idx+1,:]
                 # get prediction results
                 ids, scores, bboxes = net(x)
                 det_ids.append(ids.expand_dims(0))
@@ -352,17 +352,17 @@ def train(net, train_data, val_data, eval_metric, args):
                         label=label[:,:idx+1,:]
                         gt_label = label[:, :, 4:5]
                         gt_box = label[:, :, :4]
-                        #print(im_info[0,1])
                         data = data[:,:,:int(im_info[0,1].asnumpy()[0]),:int(im_info[0,0].asnumpy()[0])]
                         cls_pred, box_pred, roi, samples, matches, rpn_score, rpn_box, anchors = net(data, gt_box)
-                        # print([line for line in label[0, :, :] if line[0] > -1])
                         # losses of rpn
                         #losses = []
-                        #gt_bboxes = mx.nd.array(bbox[np.newaxis, :, :4])
-                        # sys.exit(0)
                         rpn_cls_targets, rpn_box_targets, rpn_box_masks = net.rpn_target_generator(
-                                                            gt_box, anchors[0], im_info[0,0],im_info[0,1])
+                                                            gt_box.as_in_context(mx.cpu(0)), anchors[0].as_in_context(mx.cpu(0)),\
+                                                             im_info[0,0].as_in_context(mx.cpu(0)),im_info[0,1].as_in_context(mx.cpu(0)))
                         rpn_score = rpn_score.squeeze(axis=-1)
+                        rpn_cls_targets=rpn_cls_targets.as_in_context(rpn_score.context)
+                        rpn_box_targets=rpn_box_targets.as_in_context(rpn_score.context)
+                        rpn_box_masks = rpn_box_masks.as_in_context(rpn_score.context)
                         num_rpn_pos = (rpn_cls_targets >= 0).sum()
                         rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
                         rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
@@ -382,21 +382,21 @@ def train(net, train_data, val_data, eval_metric, args):
                         metric_losses[1].append(rpn_loss2.sum())
                         metric_losses[2].append(rcnn_loss1.sum())
                         metric_losses[3].append(rcnn_loss2.sum())
-                        add_losses[0].append([[rpn_cls_targets, rpn_cls_targets>=0], [rpn_score]])
-                        add_losses[1].append([[rpn_box_targets, rpn_box_masks], [rpn_box]])
-                        add_losses[2].append([[cls_targets], [cls_pred]])
-                        add_losses[3].append([[box_targets, box_masks], [box_pred]])
+                        #add_losses[0].append([[rpn_cls_targets, rpn_cls_targets>=0], [rpn_score]])
+                        #add_losses[1].append([[rpn_box_targets, rpn_box_masks], [rpn_box]])
+                        #add_losses[2].append([[cls_targets], [cls_pred]])
+                        #add_losses[3].append([[box_targets, box_masks], [box_pred]])
                 autograd.backward(losses)
                 for metric, record in zip(metrics, metric_losses):
                     metric.update(0, record)
-                for metric, records in zip(metrics2, add_losses):
-                    for pred in records:
-                        metric.update(pred[0], pred[1])
+                #for metric, records in zip(metrics2, add_losses):
+                #    for pred in records:
+                #        metric.update(pred[0], pred[1])
             trainer.step(batch_size)
             # update metrics
             if args.log_interval and not (i + 1) % args.log_interval:
                 # msg = ','.join(['{}={:.3f}'.format(*metric.get()) for metric in metrics])
-                msg = ','.join(['{}={:.3f}'.format(*metric.get()) for metric in metrics + metrics2])
+                msg = ','.join(['{}={:.3f}'.format(*metric.get()) for metric in metrics ])
                 logger.info('[Epoch {}][Batch {}], Speed: {:.3f} samples/sec, {}'.format(
                     epoch, i, batch_size/(time.time()-btic), msg))
             btic = time.time()
