@@ -37,6 +37,8 @@ def parse_args():
                         'number to accelerate data loading, if you CPU and GPUs are powerful.')
     parser.add_argument('--gpus', type=str, default='0',
                         help='Training with GPUs, you can specify 1,3 for example.')
+    parser.add_argument('--batch-size', type=str, default='',
+                        help='Training batch per device.')
     parser.add_argument('--epochs', type=str, default='',
                         help='Training epochs.')
     parser.add_argument('--resume', type=str, default='',
@@ -220,14 +222,7 @@ def split_and_load(batch, ctx_list):
     num_ctx = len(ctx_list)
     new_batch = []
     for i, data in enumerate(batch):
-        #data=np.asarray(data)
-        if not isinstance(data, ndarray.NDArray):
-            data = ndarray.array(data, ctx=ctx_list[0])
-        if len(ctx_list) == 1:
-            return [data.as_in_context(ctx_list[0])]
-
-        slices = gluon.utils.split_data(data, len(ctx_list), 0, True)
-        new_data = [x.as_in_context(ctx) for x, ctx in zip(slices, ctx_list)]
+        new_data = [x.as_in_context(ctx) for x, ctx in zip(data, ctx_list)]
         new_batch.append(new_data)
     return new_batch
 
@@ -377,7 +372,6 @@ def train(net, train_data, val_data, eval_metric, args):
         tic = time.time()
         btic = time.time()
         net.hybridize(static_alloc=True)
-        print(net)
         base_lr = trainer.learning_rate
         #train start
         print('training  start-----------------------')
@@ -391,8 +385,7 @@ def train(net, train_data, val_data, eval_metric, args):
             batch_size = len(batch[0])
             #print(batch[0])
             print(batch_size)
-            #batch =split_and_load(batch, ctx_list=ctx)
-            batch =[gluon.utils.split_and_load(batch[it], ctx_list=ctx, batch_axis=0) for it in range(0,5)]
+            batch =split_and_load(batch, ctx_list=ctx)
             losses = []
             metric_losses = [[] for _ in metrics]
             add_losses = [[] for _ in metrics2]
@@ -445,7 +438,7 @@ def train(net, train_data, val_data, eval_metric, args):
                     for loss_idx, loss in enumerate(addQ):
                         add_losses[loss_idx].append(loss)
  
-                    autograd.backward(losses)
+                autograd.backward(losses)
                 for metric, record in zip(metrics, metric_losses):
                     metric.update(0, record)
 
@@ -491,7 +484,7 @@ if __name__ == '__main__':
     # training contexts
     ctx = [mx.gpu(int(i)) for i in args.gpus.split(',') if i.strip()]
     ctx = ctx if ctx else [mx.cpu()]
-    args.batch_size = len(ctx)*2  # 1 batch per device
+    args.batch_size = if args.batch_size else len(ctx)  # 1 batch per device
 
     # network
     net_name = '_'.join(('cascade_rcnn', args.network, args.dataset))

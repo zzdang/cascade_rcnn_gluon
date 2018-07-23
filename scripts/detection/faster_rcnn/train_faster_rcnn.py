@@ -37,6 +37,8 @@ def parse_args():
                         'number to accelerate data loading, if you CPU and GPUs are powerful.')
     parser.add_argument('--gpus', type=str, default='0',
                         help='Training with GPUs, you can specify 1,3 for example.')
+    parser.add_argument('--batch-size', type=str, default='',
+                        help='Training batch per device.')    
     parser.add_argument('--epochs', type=str, default='',
                         help='Training epochs.')
     parser.add_argument('--resume', type=str, default='',
@@ -401,7 +403,7 @@ if __name__ == '__main__':
     # training contexts
     ctx = [mx.gpu(int(i)) for i in args.gpus.split(',') if i.strip()]
     ctx = ctx if ctx else [mx.cpu()]
-    args.batch_size = len(ctx)  # 1 batch per device
+    args.batch_size = if args.batch_size else len(ctx)  # 1 batch per device
 
     # network
     net_name = '_'.join(('faster_rcnn', args.network, args.dataset))
