@@ -191,7 +191,7 @@ def get_dataset(dataset, args):
 
 def get_dataloader(net, train_dataset, val_dataset, short, max_size, batch_size, num_workers):
     """Get dataloader."""
-    train_bfn = batchify.Tuple(*[batchify.Append() for _ in range(5)])
+    train_bfn = batchify.Tuple(*[batchify.Append() for _ in range(3)])
     train_loader = mx.gluon.data.DataLoader(
         train_dataset.transform(FasterRCNNDefaultTrainTransform(short, max_size, net)),
         batch_size, True, batchify_fn=train_bfn, last_batch='rollover', num_workers=num_workers)
@@ -395,9 +395,7 @@ def train(net, train_data, val_data, eval_metric, args):
                     logger.info('[Epoch 0 Iteration {}] Set learning rate to {}'.format(i, new_lr))
                     trainer.set_learning_rate(new_lr)
             batch_size = len(batch[0])
-            #print(batch[0])
-            print(batch_size)
-            #batch =split_and_load(batch, ctx_list=ctx)
+            #print(batch[0]) #batch =split_and_load(batch, ctx_list=ctx)
             batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,3)]
             losses = []
             metric_losses = [[] for _ in metrics]
@@ -415,7 +413,10 @@ def train(net, train_data, val_data, eval_metric, args):
                         gt_box = label[:, :, :4]
      
                         rpn_pred, cascade_rcnn_pred = net(data, gt_box)
-     
+                        rpn_score, rpn_box, anchors = rpn_pred
+                        rpn_cls_targets, rpn_box_targets, rpn_box_masks = net.rpn_target_generator(
+                                                    gt_box, anchors[0],\
+                                                     im_info[0,0],im_info[0,1])
                         # losses of rpn
                         rpn_loss1, rpn_loss2, rpn_score, rpn_box = get_rpn_cls_loss(rpn_pred, rpn_cls_targets, rpn_box_targets, rpn_box_masks)
                         rpn_loss = rpn_loss1 + rpn_loss2
