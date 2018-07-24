@@ -270,38 +270,44 @@ class CascadeRCNN(RCNN3):
                                      [cls_pred, box_pred, sample_data_1st.roi, sample_data_1st.samples, sample_data_1st.matches  ] ]
  
             return  rpn_result, cascade_rcnn_result         
-        
-        bboxes = self.box_decoder_3rd(box_pred_3rd, self.box_to_center(roi_3rd))
+        else:
+            cls_pred, box_pred, *_ = self.cascade_rcnn(F=F, feature=feat, roi=rpn_box, sampler=self.sampler_3rd, gt_box=gt_box)
+            roi_2nd = self.decode_bbox(source_bbox=rpn_box, encoded_bbox=box_pred, stds=(.05, .05, .1, .1))
+            cls_pred_2nd, box_pred_2nd, *_ = self.cascade_rcnn(F=F, feature=feat, roi=roi_2nd, sampler=self.sampler_3rd, gt_box=gt_box)
+            roi_3rd = self.decode_bbox(source_bbox=roi_2nd, encoded_bbox=box_pred_2nd, stds=(.033, .033, .067, .067))
+            cls_pred_3rd, box_pred_3rd, *_ = self.cascade_rcnn(F=F, feature=feat, roi=roi_3rd, sampler=self.sampler_3rd, gt_box=gt_box)        
 
-        bboxes = bboxes.split(
-            axis=0, num_outputs=1, squeeze_axis=True)
+            bboxes = self.box_decoder_3rd(box_pred_3rd, self.box_to_center(roi_3rd))
 
-        cls_prob_3rd = F.softmax(cls_pred_3rd, axis=-1)
-        cls_prob_2nd = F.softmax(cls_pred_2nd, axis=-1)
-        cls_prob_1st = F.softmax(cls_pred, axis=-1)
-        cls_prob_3rd_avg = F.ElementWiseSum(cls_prob_3rd,cls_prob_2nd,cls_prob_1st)
-        cls_ids, scores = self.cls_decoder(cls_prob_3rd_avg )
-        results = []
-        for i in range(self.num_class):
-            cls_id = cls_ids.slice_axis(axis=-1, begin=i, end=i+1)
-            score = scores.slice_axis(axis=-1, begin=i, end=i+1)
-            # per class results
-            per_result = F.concat(*[cls_id, score, bboxes], dim=-1)
+            bboxes = bboxes.split(
+                axis=0, num_outputs=1, squeeze_axis=True)
 
-            results.append(per_result)
-        result = F.concat(*results, dim=0).expand_dims(0)
-        if self.nms_thresh > 0 and self.nms_thresh < 1:
-            result = F.contrib.box_nms(
-                result, overlap_thresh=self.nms_thresh, topk=self.nms_topk,
-                id_index=0, score_index=1, coord_start=2)
-            if self.nms_topk > 0:
-                result = result.slice_axis(axis=1, begin=0, end=100).squeeze(axis=0)
-        ids = F.slice_axis(result, axis=-1, begin=0, end=1)
-        scores = F.slice_axis(result, axis=-1, begin=1, end=2)
-        bboxes = F.slice_axis(result, axis=-1, begin=2, end=6)
+            cls_prob_3rd = F.softmax(cls_pred_3rd, axis=-1)
+            cls_prob_2nd = F.softmax(cls_pred_2nd, axis=-1)
+            cls_prob_1st = F.softmax(cls_pred, axis=-1)
+            cls_prob_3rd_avg = F.ElementWiseSum(cls_prob_3rd,cls_prob_2nd,cls_prob_1st)
+            cls_ids, scores = self.cls_decoder(cls_prob_3rd_avg )
+            results = []
+            for i in range(self.num_class):
+                cls_id = cls_ids.slice_axis(axis=-1, begin=i, end=i+1)
+                score = scores.slice_axis(axis=-1, begin=i, end=i+1)
+                # per class results
+                per_result = F.concat(*[cls_id, score, bboxes], dim=-1)
 
-        
-        return ids, scores, bboxes
+                results.append(per_result)
+            result = F.concat(*results, dim=0).expand_dims(0)
+            if self.nms_thresh > 0 and self.nms_thresh < 1:
+                result = F.contrib.box_nms(
+                    result, overlap_thresh=self.nms_thresh, topk=self.nms_topk,
+                    id_index=0, score_index=1, coord_start=2)
+                if self.nms_topk > 0:
+                    result = result.slice_axis(axis=1, begin=0, end=100).squeeze(axis=0)
+            ids = F.slice_axis(result, axis=-1, begin=0, end=1)
+            scores = F.slice_axis(result, axis=-1, begin=1, end=2)
+            bboxes = F.slice_axis(result, axis=-1, begin=2, end=6)
+
+            
+            return ids, scores, bboxes
 
 
 

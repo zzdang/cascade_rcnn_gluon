@@ -238,7 +238,7 @@ def validate(net, val_data, ctx, eval_metric):
     net.set_nms(nms_thresh=0.3, nms_topk=400)
     net.hybridize(static_alloc=True)
     for batch in val_data:
-        batch = split_and_load(batch, ctx_list=ctx)
+        batch =[gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,3)]
         det_bboxes = []
         det_ids = []
         det_scores = []
@@ -252,20 +252,20 @@ def validate(net, val_data, ctx, eval_metric):
                 im_scale=im_scale_[ix:ix+1]
                 idx = np.where(y[0, :, 0].asnumpy() > -1)[0][-1]
                 y=y[:,:idx+1,:]
-            # get prediction results
-            ids, scores, bboxes = net(x)
-            det_ids.append(ids.expand_dims(0))
-            det_scores.append(scores.expand_dims(0))
-            # clip to image size
-            det_bboxes.append(mx.nd.Custom(bboxes, x, op_type='bbox_clip_to_image').expand_dims(0))
-            # rescale to original resolution
-            im_scale = im_scale.reshape((-1)).asscalar()
-            det_bboxes[-1] *= im_scale
-            # split ground truths
-            gt_ids.append(y.slice_axis(axis=-1, begin=4, end=5))
-            gt_bboxes.append(y.slice_axis(axis=-1, begin=0, end=4))
-            gt_bboxes[-1] *= im_scale
-            gt_difficults.append(y.slice_axis(axis=-1, begin=5, end=6) if y.shape[-1] > 5 else None)
+                # get prediction results
+                ids, scores, bboxes = net(x)
+                det_ids.append(ids.expand_dims(0))
+                det_scores.append(scores.expand_dims(0))
+                # clip to image size
+                det_bboxes.append(mx.nd.Custom(bboxes, x, op_type='bbox_clip_to_image').expand_dims(0))
+                # rescale to original resolution
+                im_scale = im_scale.reshape((-1)).asscalar()
+                det_bboxes[-1] *= im_scale
+                # split ground truths
+                gt_ids.append(y.slice_axis(axis=-1, begin=4, end=5))
+                gt_bboxes.append(y.slice_axis(axis=-1, begin=0, end=4))
+                gt_bboxes[-1] *= im_scale
+                gt_difficults.append(y.slice_axis(axis=-1, begin=5, end=6) if y.shape[-1] > 5 else None)
 
         # update metric
         for det_bbox, det_id, det_score, gt_bbox, gt_id, gt_diff in zip(det_bboxes, det_ids, det_scores, gt_bboxes, gt_ids, gt_difficults):
@@ -317,7 +317,7 @@ def train(net, train_data, val_data, eval_metric, args):
 
 
     net.collect_params().reset_ctx(ctx)
-    net.collect_train_params().setattr('grad_req','add')
+    #net.collect_train_params().setattr('grad_req','add')
     trainer = gluon.Trainer(
         net.collect_train_params(),  # fix batchnorm, fix first stage, etc...
         'sgd',

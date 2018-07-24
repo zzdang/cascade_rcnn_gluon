@@ -233,7 +233,7 @@ def validate(net, val_data, ctx, eval_metric):
     net.set_nms(nms_thresh=0.3, nms_topk=400)
     net.hybridize(static_alloc=True)
     for batch in val_data:
-        batch = batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,3)] #split_and_load(batch, ctx_list=ctx)
+        batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,3)] #split_and_load(batch, ctx_list=ctx)
         det_bboxes = []
         det_ids = []
         det_scores = []
