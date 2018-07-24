@@ -306,7 +306,6 @@ def train(net, train_data, val_data, eval_metric, args):
 
 
     net.collect_params().reset_ctx(ctx)
-    net.collect_train_params().setattr('grad_req','add')
     trainer = gluon.Trainer(
         net.collect_train_params(),  # fix batchnorm, fix first stage, etc...
         'sgd',
@@ -383,8 +382,6 @@ def train(net, train_data, val_data, eval_metric, args):
                     logger.info('[Epoch 0 Iteration {}] Set learning rate to {}'.format(i, new_lr))
                     trainer.set_learning_rate(new_lr)
             batch_size = len(batch[0])
-            #print(batch[0])
-            print(batch_size)
             batch =split_and_load(batch, ctx_list=ctx)
             losses = []
             metric_losses = [[] for _ in metrics]
@@ -484,7 +481,7 @@ if __name__ == '__main__':
     # training contexts
     ctx = [mx.gpu(int(i)) for i in args.gpus.split(',') if i.strip()]
     ctx = ctx if ctx else [mx.cpu()]
-    args.batch_size = if args.batch_size else len(ctx)  # 1 batch per device
+    args.batch_size =args.batch_size if args.batch_size else len(ctx)  # 1 batch per device
 
     # network
     net_name = '_'.join(('cascade_rcnn', args.network, args.dataset))

@@ -118,6 +118,8 @@ class FasterRCNNDefaultTrainTransform(object):
         """Apply transform to training image/label."""
         # resize shorter side but keep in max_size
         h, w, _ = src.shape
+        #interp = np.random.randint(0, 5)
+        #img = timage.imresize(src, self._short, self._max_size, interp=interp)
         img = timage.resize_short_within(src, self._short, self._max_size)
         bbox = tbbox.resize(label, (w, h), (img.shape[1], img.shape[0]))
 
@@ -138,9 +140,20 @@ class FasterRCNNDefaultTrainTransform(object):
         oshape = self._feat_sym.infer_shape(data=(1, 3, img.shape[1], img.shape[2]))[1][0]
         anchor = self._anchors[:, :, :oshape[2], :oshape[3], :].reshape((-1, 4))
         gt_bboxes = mx.nd.array(bbox[np.newaxis, :, :4])
-        cls_target, box_target, box_mask = self._target_generator(
-            gt_bboxes, anchor, img.shape[2], img.shape[1])
-        return img, bbox.astype(img.dtype), cls_target[0], box_target[0], box_mask[0]
+        # cls_target, box_target, box_mask = self._target_generator(
+        #     gt_bboxes, anchor, img.shape[2], img.shape[1])
+        bbox_= mx.nd.zeros((100, 6))-1
+        bbox_[:bbox.shape[0],:]=bbox
+        bbox_= bbox_.astype(img.dtype)
+        img_ = mx.nd.zeros((3,self._max_size, self._max_size))
+        img_[:,:img.shape[1],:img.shape[2]]=img
+        img_ = img_.astype(img.dtype)
+        im_info = mx.nd.zeros(2)
+        im_info=(img.shape[2], img.shape[1])
+        #print(cls_target.shape,box_target.shape,box_mask.shape)
+        # print("--------")
+        # print(anchor)
+        return (img_, bbox_, im_info)
 
 
 class FasterRCNNDefaultValTransform(object):
@@ -167,6 +180,8 @@ class FasterRCNNDefaultValTransform(object):
         """Apply transform to validation image/label."""
         # resize shorter side but keep in max_size
         h, w, _ = src.shape
+        #interp = np.random.randint(0, 5)
+        #img = timage.imresize(src, self._short, self._max_size, interp=interp)
         img = timage.resize_short_within(src, self._short, self._max_size)
         # no scaling ground-truth, return image scaling ratio instead
         bbox = tbbox.resize(label, (w, h), (img.shape[1], img.shape[0]))
@@ -174,4 +189,10 @@ class FasterRCNNDefaultValTransform(object):
 
         img = mx.nd.image.to_tensor(img)
         img = mx.nd.image.normalize(img, mean=self._mean, std=self._std)
-        return img, bbox.astype('float32'), mx.nd.array([im_scale])
+        bbox_= mx.nd.zeros((100, 6))-1
+        bbox_[:bbox.shape[0],:]=bbox
+        bbox_= bbox_.astype('float32')
+        img_ = mx.nd.zeros((3,self._max_size, self._max_size))
+        img_[:,:img.shape[1],:img.shape[2]]=img
+        img_ = img_.astype(img.dtype)
+        return img_, bbox_, mx.nd.array([im_scale])
