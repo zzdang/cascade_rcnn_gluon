@@ -481,7 +481,7 @@ if __name__ == '__main__':
     # training contexts
     ctx = [mx.gpu(int(i)) for i in args.gpus.split(',') if i.strip()]
     ctx = ctx if ctx else [mx.cpu()]
-    args.batch_size =args.batch_size if args.batch_size else len(ctx)  # 1 batch per device
+    args.batch_size = args.batch_size if args.batch_size else len(ctx)  # 1 batch per device
 
     # network
     net_name = '_'.join(('cascade_rcnn', args.network, args.dataset))
