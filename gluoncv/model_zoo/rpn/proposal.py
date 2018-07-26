@@ -95,7 +95,10 @@ class RPNProposal(gluon.HybridBlock):
                                     coord_start=1, score_index=0, id_index=-1, force_suppress=True)
 
             # slice post_nms number of boxes
-            result = F.slice_axis(tmp, axis=1, begin=0, end=post_nms)
+            if post_nms == -1:
+                result = tmp
+            else:
+                result = F.slice_axis(tmp, axis=1, begin=0, end=post_nms)
             rpn_scores = F.slice_axis(result, axis=-1, begin=0, end=1)
             rpn_bbox = F.slice_axis(result, axis=-1, begin=1, end=None)
 

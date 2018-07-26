@@ -74,7 +74,7 @@ class FasterRCNN(RCNN):
 
     """
     def __init__(self, features, top_features, scales, ratios, classes, roi_mode, roi_size,
-                 stride=16, rpn_channel=1024,train_post_nms=2000, nms_thresh=0.3, nms_topk=400,
+                 stride=16, rpn_channel=1024,train_pre_nms=12000,train_post_nms=2000, nms_thresh=0.3, nms_topk=400,
                  num_sample=128, pos_iou_thresh=0.5, neg_iou_thresh_high=0.5,
                  neg_iou_thresh_low=0.0, pos_ratio=0.25, **kwargs):
         super(FasterRCNN, self).__init__(
@@ -88,7 +88,8 @@ class FasterRCNN(RCNN):
                                 neg_iou_thresh=0.3, pos_ratio=0.5,
                                 stds=(1., 1., 1., 1.))])
         with self.name_scope():
-            self.rpn = RPN(rpn_channel, stride, scales=scales, ratios=ratios,train_post_nms=train_post_nms)
+            self.rpn = RPN(rpn_channel, stride, scales=scales, ratios=ratios,\
+                train_pre_nms=train_pre_nms,train_post_nms=train_post_nms)
             self.sampler = RCNNTargetSampler(num_sample, pos_iou_thresh, neg_iou_thresh_high,
                                              neg_iou_thresh_low, pos_ratio)
 
@@ -483,6 +484,6 @@ def faster_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwarg
     return get_faster_rcnn('vgg16_pruned', features, top_features, scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(7, 7), stride=16,
-                           rpn_channel=512,train_post_nms=2000, num_sample = 512,
+                           rpn_channel=512,train_pre_nms=12000,train_post_nms=300, num_sample = 128,
                            train_patterns=train_patterns,
                            pretrained=pretrained, **kwargs)
