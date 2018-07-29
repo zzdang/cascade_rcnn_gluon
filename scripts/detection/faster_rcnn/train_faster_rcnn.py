@@ -266,7 +266,7 @@ def validate(net, val_data, ctx, eval_metric):
 def get_lr_at_iter(alpha):
     return 1. / 3. * (1 - alpha) + alpha
 
-def train(net, train_data, val_data, eval_metric, args):
+def train(net, train_data, val_data, eval_metric, ctx,args):
     """Training pipeline"""
     net.collect_params().reset_ctx(ctx)
     trainer = gluon.Trainer(
@@ -423,4 +423,4 @@ if __name__ == '__main__':
         net, train_dataset, val_dataset, args.short, args.max_size, args.batch_size, args.num_workers)
 
     # training
-    train(net, train_data, val_data, eval_metric, args)
+    train(net, train_data, val_data, eval_metric,ctx, args)

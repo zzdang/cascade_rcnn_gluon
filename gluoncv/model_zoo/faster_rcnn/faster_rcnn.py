@@ -484,6 +484,6 @@ def faster_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwarg
     return get_faster_rcnn('vgg16_pruned', features, top_features, scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(7, 7), stride=16,
-                           rpn_channel=512,train_pre_nms=12000,train_post_nms=300, num_sample = 128,
+                           rpn_channel=512,train_pre_nms=12000,train_post_nms=500, num_sample = 128,
                            train_patterns=train_patterns,
                            pretrained=pretrained, **kwargs)

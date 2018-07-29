@@ -301,7 +301,7 @@ def get_rpn_cls_loss(rpn_prediction, rpn_cls_targets, rpn_box_targets, rpn_box_m
 def get_lr_at_iter(alpha):
     return 1. / 3. * (1 - alpha) + alpha
 
-def train(net, train_data, val_data, eval_metric, args):
+def train(net, train_data, val_data, eval_metric,ctx, args):
     """Training pipeline"""
 
 
@@ -502,5 +502,5 @@ if __name__ == '__main__':
         net, train_dataset, val_dataset, args.short, args.max_size, args.batch_size, args.num_workers)
 
     # training
-    train(net, train_data, val_data, eval_metric, args)
+    train(net, train_data, val_data, eval_metric,ctx, args)
  
