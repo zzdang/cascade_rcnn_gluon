@@ -34,8 +34,7 @@ class RPNAnchorGenerator(gluon.HybridBlock):
         anchor map so we can skip re-generating anchors for each input.
 
     """
-    def __init__(self, stride, base_size=16, ratios=(0.5, 1, 2), scales=(8, 16, 32),
-                 alloc_size=(128, 128), **kwargs):
+    def __init__(self, stride, base_size, ratios, scales, alloc_size, **kwargs):
         super(RPNAnchorGenerator, self).__init__(**kwargs)
         if not base_size:
             raise ValueError("Invalid base_size: {}.".format(base_size))
@@ -65,7 +64,6 @@ class RPNAnchorGenerator(gluon.HybridBlock):
                 w = (ws * s - 1) * 0.5
                 h = (np.round(ws * r) * s - 1) * 0.5
                 base_sizes.append([px - w, py - h, px + w, py + h])
-                print(w*2,h*2)
         base_sizes = np.array(base_sizes)  # (N, 4)
 
         # propagete to all locations by shifting offsets
