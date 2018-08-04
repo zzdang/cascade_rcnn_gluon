@@ -224,7 +224,7 @@ class FasterRCNN(RCNN):
 
         # RCNN prediction
         top_feat = self.top_features(pooled_feat)
-        top_feat = self.global_avg_pool(top_feat)
+        #top_feat = self.global_avg_pool(top_feat)
         cls_pred = self.class_predictor(top_feat)
         box_pred = self.box_predictor(top_feat)
         # cls_pred (B * N, C) -> (B, N, C)
@@ -543,14 +543,14 @@ def faster_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwarg
     top_features =base_network.features[31:]
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
     return get_faster_rcnn(
-        name='vgg16_pruned', dataset='voc', pretrained=pretrained,
+        name='resnet50_v1b', dataset='voc', pretrained=pretrained,
         features=features, top_features=top_features, classes=classes,
         short=600, max_size=1000, train_patterns=train_patterns,
-        nms_thresh=0.5, nms_topk=-1, post_nms=-1,
-        roi_mode='align', roi_size=(7, 7), stride=16, clip=4.42,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
         rpn_train_pre_nms=12000, rpn_train_post_nms=500,
-        rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=0,
+        rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
