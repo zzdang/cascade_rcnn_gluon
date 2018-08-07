@@ -148,6 +148,7 @@ class CascadeRCNN(RCNN3):
         self.stride = stride
         self._max_batch = 1  # currently only support batch size = 1
         self._max_roi = 100000  # maximum allowed ROIs
+        self._rpn_train_pre_nms = rpn_train_pre_nms
         stds_2nd = (.05, .05, .1, .1)
         stds_3rd = (.033, .033, .067, .067)
         means_2nd= (0., 0., 0., 0.)
@@ -165,8 +166,8 @@ class CascadeRCNN(RCNN3):
                 clip=clip, nms_thresh=rpn_nms_thresh, train_pre_nms=rpn_train_pre_nms,
                 train_post_nms=rpn_train_post_nms, test_pre_nms=rpn_test_pre_nms,
                 test_post_nms=rpn_test_post_nms, min_size=rpn_min_size)
-            self.sampler = RCNNTargetSampler(num_sample, pos_iou_thresh, pos_iou_thresh,
-                                             0.0, pos_ratio,1)
+            self.sampler = RCNNTargetSampler(128, pos_iou_thresh, pos_iou_thresh,
+                                             0.00001, pos_ratio,1)
             self.sampler_2nd = RCNNTargetSampler(-1, 0.6, 0.6,
                                              0.0, pos_ratio,0.95)
             self.sampler_3rd = RCNNTargetSampler(-1, 0.7, 0.7,
@@ -227,6 +228,18 @@ class CascadeRCNN(RCNN3):
             roi = roi.reshape((1,-1, 4))
             return roi
 
+    def clip_rpn(self, rpn_box):
+        F = mx.nd
+        with autograd.pause():
+            rpn_box_nd =rpn_box
+            print(rpn_box_nd)
+            rpn_box_clip = []
+            for i in range(self._rpn_train_pre_nms):
+                if  rpn_box_nd[i,0] == -1:
+                    break
+                rpn_box_clip.append(rpn_box_clip[i])
+            rpn_box_clip = F.stack(*rpn_box_clip, axis=0)
+        return rpn_box_clip
 
     def cascade_rcnn(self, F, feature, roi, sampler, gt_box):
         """Forward Faster-RCNN network.
@@ -279,6 +292,7 @@ class CascadeRCNN(RCNN3):
         # RPN proposals
         if autograd.is_training():
             _, rpn_box, raw_rpn_score, raw_rpn_box, anchors = self.rpn(feat, F.zeros_like(x))
+            #rpn_box = self.clip_rpn(rpn_box)
             # sample 128 roi
             assert gt_box is not None
             
