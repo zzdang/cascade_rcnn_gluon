@@ -97,26 +97,24 @@ class RCNN3(gluon.HybridBlock):
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
             self.cls_decoder = MultiPerClassDecoder(num_class=self.num_class+1)
             self.box_to_center = BBoxCornerToCenter()
-            self.box_decoder = NormalizedBoxCenterDecoder(clip=clip)
+            self.box_decoder = NormalizedBoxCenterDecoder()
+            # cascade 2nd and 3rd rcnn
+
 
     def collect_train_params(self, select=None):
         """Collect trainable params.
-
         This function serves as a help utility function to return only
         trainable parameters if predefined by experienced developer/researcher.
         For example, if cross-device BatchNorm is not enabled, we will definitely
         want to fix BatchNorm statistics to avoid scaling problem because RCNN training
         batch size is usually very small.
-
         Parameters
         ----------
         select : select : str
             Regular expressions for parameter match pattern
-
         Returns
         -------
         The selected :py:class:`mxnet.gluon.ParameterDict`
-
         """
         if select is None:
             return self.collect_params(self.train_patterns)
@@ -124,11 +122,9 @@ class RCNN3(gluon.HybridBlock):
 
     def set_nms(self, nms_thresh=0.3, nms_topk=400, post_nms=100):
         """Set NMS parameters to the network.
-
         .. Note::
             If you are using hybrid mode, make sure you re-hybridize after calling
             ``set_nms``.
-
         Parameters
         ----------
         nms_thresh : float, default is 0.3.
@@ -140,11 +136,9 @@ class RCNN3(gluon.HybridBlock):
             Only return top `post_nms` detection results, the rest is discarded. The number is
             based on COCO dataset which has maximum 100 objects per image. You can adjust this
             number if expecting more objects. You can use -1 to return all detections.
-
         Returns
         -------
         None
-
         """
         self._clear_cached_op()
         self.nms_thresh = nms_thresh

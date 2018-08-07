@@ -42,7 +42,7 @@ class RPNProposal(gluon.HybridBlock):
         # self._compute_area = BBoxArea()
         self._nms_thresh = nms_thresh
         self._train_pre_nms = max(1, train_pre_nms)
-        self._train_post_nms = max(1, train_post_nms)
+        self._train_post_nms =  train_post_nms
         self._test_pre_nms = max(1, test_pre_nms)
         self._test_post_nms = max(1, test_post_nms)
         self._min_size = min_size
@@ -98,6 +98,10 @@ class RPNProposal(gluon.HybridBlock):
                                     coord_start=1, score_index=0, id_index=-1, force_suppress=True)
 
             # slice post_nms number of boxes
+            #_, infer_shape,_ = tmp.infer_shape(data0=(1,3,600,800) )
+            #print("tmp shape :{}\n\n\n\n\n".format(infer_shape))
+            if post_nms == -1:
+                post_nms = None
             result = F.slice_axis(tmp, axis=1, begin=0, end=post_nms)
             rpn_scores = F.slice_axis(result, axis=-1, begin=0, end=1)
             rpn_bbox = F.slice_axis(result, axis=-1, begin=1, end=None)
