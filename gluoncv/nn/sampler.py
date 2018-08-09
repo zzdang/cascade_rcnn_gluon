@@ -324,19 +324,15 @@ class ClipRPNBoxOp(mx.operator.CustomOp):
         F = mx.nd
         #with autograd.pause():
         rpn_box = in_data[0]
-        rpn_box_clip = []
-        index = []
-        print(rpn_box.shape)
+        index = mx.nd.ones((1,1))
         for i in range(self._train_pre_nms):
             if  rpn_box[0,i,0] == -1:
-                index.append([i])
                 break
         #     rpn_box_clip.append(rpn_box[0,i])
         # rpn_box_clip = F.stack(*rpn_box_clip, axis=0)
         # rpn_box_clip = rpn_box_clip.expand_dims(0)
-        index =F.stack(*index, axis =0)
-        print("~~~~")
-        print(index)
+        #index =F.stack(*index, axis =0)
+        index[0][0] = i
         #index = mx.nd.array(index)
         #index = index.expand_dims(0)
         self.assign(out_data[0], req[0], mx.nd.array(index))

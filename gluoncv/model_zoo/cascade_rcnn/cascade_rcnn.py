@@ -277,8 +277,10 @@ class CascadeRCNN(RCNN3):
         # RPN proposals
         if autograd.is_training():
             _, rpn_box, raw_rpn_score, raw_rpn_box, anchors = self.rpn(feat, F.zeros_like(x))
-            #rpn_box = F.Custom(rpn_box, op_type='clip_rpn_box')
-            rpn_box = self.rpn_box_clip(rpn_box)
+            rpn_index = F.Custom(rpn_box, op_type='clip_rpn_box')
+            index = int(rpn_index.sum().asnumpy())
+            rpn_box = rpn_box.slice_axis(axis=1,begin=0,end =index)
+            #rpn_box = self.rpn_box_clip(rpn_box)
             # sample 128 roi
             assert gt_box is not None
             
@@ -288,6 +290,12 @@ class CascadeRCNN(RCNN3):
         
         if autograd.is_training():
             #rpn_box, samples, matches = self.sampler(rpn_box, gt_box)
+            if index < 512:
+                self.sampler = RCNNTargetSampler(-1, 0.5, 0.5,
+                                             0.0, 0.25,1)
+            else:
+                self.sampler = RCNNTargetSampler(512, 0.5, 0.5,
+                                             0.0, 0.25,1)
             cls_pred, box_pred, sample_data_1st = self.cascade_rcnn(F=F, feature=feat, roi=rpn_box, sampler=self.sampler, gt_box=gt_box)            
             
             roi_2nd = self.decode_bbox(source_bbox=sample_data_1st.roi, encoded_bbox=box_pred, stds=(.05, .05, .1, .1))
@@ -682,7 +690,7 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=3000, rpn_train_post_nms=-1,
+        rpn_train_pre_nms=3000, rpn_train_post_nms=500,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
