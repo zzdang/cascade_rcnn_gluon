@@ -1,12 +1,28 @@
 """RCNN Target Generator."""
 from __future__ import absolute_import
-
+import mxnet as mx
 from mxnet import gluon
 from mxnet import autograd
 from ...nn.coder import MultiClassEncoder, NormalizedBoxCenterEncoder
 from ...nn.matcher import MaximumMatcher_Cascade
 
+class ClipRPNBox(gluon.Block):
+    """docstring for ClipBox"""
+    def __init__(self, rpn_train_pre_nms):
+        super(ClipRPNBox, self).__init__()
+        self._rpn_train_pre_nms = rpn_train_pre_nms
 
+    def forward(self, roi):
+        F = mx.nd
+        with autograd.pause():
+            for i in range(self._rpn_train_pre_nms):
+                if  roi[0,i,0] == -1:
+                    #index.append([i])
+                    break
+                #rpn_index = F.Custom(roi, op_type='clip_rpn_box')
+            roi = roi.slice_axis(axis=1, begin=0, end=i)
+        return roi      
+        
 class RCNNTargetSampler(gluon.HybridBlock):
     """A sampler to choose positive/negative samples from RCNN Proposals
     Parameters
@@ -41,7 +57,7 @@ class RCNNTargetSampler(gluon.HybridBlock):
         """
         Only support batch_size=1 now.
         """
-
+        #F = mx.nd
         assert gt_box is not None
         with autograd.pause():
             # cocnat rpn roi with ground truths

@@ -5,7 +5,7 @@ import os
 import mxnet as mx
 from mxnet import autograd
 from mxnet.gluon import nn
-from .rcnn_target import RCNNTargetSampler, RCNNTargetGenerator
+from .rcnn_target import RCNNTargetSampler, RCNNTargetGenerator,ClipRPNBox
 from ..rcnn import RCNN3
 from ..rpn import RPN
 from ...nn.coder import NormalizedBoxCenterDecoder, MultiPerClassDecoder
@@ -159,6 +159,7 @@ class CascadeRCNN(RCNN3):
                                 num_sample=256, pos_iou_thresh=0.7,
                                 neg_iou_thresh=0.3, pos_ratio=0.5,
                                 stds=(1., 1., 1., 1.))])
+        self._rpn_box_clip = set([ClipRPNBox(rpn_train_pre_nms = rpn_train_pre_nms)])
         with self.name_scope():
             self.rpn = RPN(
                 channels=rpn_channel, stride=stride, base_size=base_size,
@@ -166,7 +167,7 @@ class CascadeRCNN(RCNN3):
                 clip=clip, nms_thresh=rpn_nms_thresh, train_pre_nms=rpn_train_pre_nms,
                 train_post_nms=rpn_train_post_nms, test_pre_nms=rpn_test_pre_nms,
                 test_post_nms=rpn_test_post_nms, min_size=rpn_min_size)
-            self.sampler = RCNNTargetSampler(num_sample, pos_iou_thresh, pos_iou_thresh,
+            self.sampler = RCNNTargetSampler(-1, pos_iou_thresh, pos_iou_thresh,
                                              0.0, pos_ratio,1)
             self.sampler_2nd = RCNNTargetSampler(-1, 0.6, 0.6,
                                              0.0, pos_ratio,0.95)
@@ -193,13 +194,10 @@ class CascadeRCNN(RCNN3):
         return list(self._target_generator_3rd)[0]
     @property
     def rpn_target_generator(self):
-        """Returns stored target generator
-        Returns
-        -------
-        mxnet.gluon.HybridBlock
-            The RPN target generator
-        """
         return list(self._rpn_target_generator)[0]
+    @property
+    def rpn_box_clip(self):
+        return list(self._rpn_box_clip)[0]
 
     def extract_ROI(self, F, feature, bbox):
 
@@ -227,19 +225,6 @@ class CascadeRCNN(RCNN3):
             roi = box_decoder(encoded_bbox, self.box_to_center(source_bbox))
             roi = roi.reshape((1,-1, 4))
             return roi
-
-    def clip_rpn(self, rpn_box):
-        F = mx.nd
-        with autograd.pause():
-            rpn_box_nd =rpn_box
-            print(rpn_box_nd)
-            rpn_box_clip = []
-            for i in range(self._rpn_train_pre_nms):
-                if  rpn_box_nd[i,0] == -1:
-                    break
-                rpn_box_clip.append(rpn_box_clip[i])
-            rpn_box_clip = F.stack(*rpn_box_clip, axis=0)
-        return rpn_box_clip
 
     def cascade_rcnn(self, F, feature, roi, sampler, gt_box):
         """Forward Faster-RCNN network.
@@ -293,7 +278,7 @@ class CascadeRCNN(RCNN3):
         if autograd.is_training():
             _, rpn_box, raw_rpn_score, raw_rpn_box, anchors = self.rpn(feat, F.zeros_like(x))
             #rpn_box = F.Custom(rpn_box, op_type='clip_rpn_box')
-            #rpn_box = self.clip_rpn(rpn_box)
+            rpn_box = self.rpn_box_clip(rpn_box)
             # sample 128 roi
             assert gt_box is not None
             
@@ -697,7 +682,7 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=8000, rpn_train_post_nms=350,
+        rpn_train_pre_nms=3000, rpn_train_post_nms=-1,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

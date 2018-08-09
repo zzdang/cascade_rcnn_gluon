@@ -362,11 +362,11 @@ def train(net, train_data, val_data, eval_metric,ctx, args):
             metric.reset()
         tic = time.time()
         btic = time.time()
-        net.hybridize(static_alloc=True)
+        #net.hybridize(static_alloc=True)
         base_lr = trainer.learning_rate
         #train start
         print('training  start-----------------------')
-        print(net.collect_params())
+        #print(net.collect_params())
         for i, batch in enumerate(train_data):
             if epoch == 0 and i <= lr_warmup:
                 new_lr = base_lr * get_lr_at_iter(i / lr_warmup)
