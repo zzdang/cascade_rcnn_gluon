@@ -289,6 +289,55 @@ class QuotaSamplerOp(mx.operator.CustomOp):
         self.assign(in_grad[0], req[0], 0)
         self.assign(in_grad[1], req[1], 0)
 
+class ClipRPNBoxOp(mx.operator.CustomOp):
+    """Sampler that handles limited quota for positive and negative samples.
+
+    This is a custom Operator used inside HybridBlock.
+
+    Parameters
+    ----------
+
+    """
+    def __init__(self, train_pre_nms = 3000):
+        super(ClipRPNBoxOp, self).__init__()
+        self._train_pre_nms = train_pre_nms
+
+    def forward(self, is_train, req, in_data, out_data, aux):
+        """Quota Sampler
+
+        Parameters:
+        ----------
+        in_data: array-like of Symbol
+            [matches, ious], see below.
+        matches : NDArray or Symbol
+            Matching results, postive number for postive matching, -1 for not matched.
+        ious : NDArray or Symbol
+            IOU overlaps with shape (N, M), batching is supported.
+
+        Returns:
+        --------
+        NDArray or Symbol
+            Sampling results with same shape as ``matches``.
+            1 for positive, -1 for negative, 0 for ignore.
+
+        """
+        F = mx.nd
+        #with autograd.pause():
+        rpn_box = in_data[0]
+        rpn_box_clip = []
+        print(rpn_box.shape)
+        for i in range(self._train_pre_nms):
+            if  rpn_box[0,i,0] == -1:
+                break
+            rpn_box_clip.append(rpn_box[0,i])
+        rpn_box_clip = F.stack(*rpn_box_clip, axis=0)
+        rpn_box_clip = rpn_box_clip.expand_dims(0)
+
+        self.assign(out_data[0], req[0], mx.nd.array(rpn_box_clip))
+
+    def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
+        self.assign(in_grad[0], req[0], 0)
+
 
 @mx.operator.register('quota_sampler')
 class QuotaSamplerProp(mx.operator.CustomOpProp):
@@ -351,3 +400,31 @@ class QuotaSamplerProp(mx.operator.CustomOpProp):
         return QuotaSamplerOp(self.num_sample, self.pos_thresh, self.neg_thresh_high,
                               self.neg_thresh_low, self.pos_ratio, self.neg_ratio,
                               self.fill_negative)
+
+@mx.operator.register('clip_rpn_box')
+class ClipRPNBoxProp(mx.operator.CustomOpProp):
+    """Property for QuotaSampleOp.
+
+    Parameters
+    ----------
+
+    """
+    def __init__(self, train_pre_nms = 3000):
+        super(ClipRPNBoxProp, self).__init__(need_top_grad=False)
+        self._train_pre_nms = train_pre_nms
+
+    def list_arguments(self):
+        return ['rpn_box']
+
+    def list_outputs(self):
+        return ['output']
+
+    def infer_shape(self, in_shape):
+        return [in_shape[0]], [in_shape[0]], []
+
+    def infer_type(self, in_type):
+        return [in_type[0]], [in_type[0]], []
+
+    # pylint: disable=unused-argument
+    def create_operator(self, ctx, in_shapes, in_dtypes):
+        return ClipRPNBoxOp(self._train_pre_nms)
