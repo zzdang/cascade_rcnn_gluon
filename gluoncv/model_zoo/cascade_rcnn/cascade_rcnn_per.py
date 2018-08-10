@@ -5,7 +5,7 @@ import os
 import mxnet as mx
 from mxnet import autograd
 from mxnet.gluon import nn
-from .rcnn_target import RCNNTargetSampler, RCNNTargetGenerator
+from .rcnn_target import RCNNTargetSampler, RCNNTargetGenerator,ClipRPNBox
 from ..rcnn import RCNN3
 from ..rpn import RPN
 from ...nn.coder import NormalizedBoxCenterDecoder, MultiPerClassDecoder
@@ -30,9 +30,37 @@ class CascadeRCNN(RCNN3):
         Base feature extractor before feature pooling layer.
     top_features : gluon.HybridBlock
         Tail feature extractor after feature pooling layer.
+    classes : iterable of str
+        Names of categories, its length is ``num_class``.
+    short : int
+        Input image short side size.
+    max_size : int
+        Maximum size of input image long side.
     train_patterns : str
         Matching pattern for trainable parameters.
-    scales : iterable of float
+    nms_thresh : float, default is 0.3.
+        Non-maximum suppression threshold. You can speficy < 0 or > 1 to disable NMS.
+    nms_topk : int, default is 400
+        Apply NMS to top k detection results, use -1 to disable so that every Detection
+         result is used in NMS.
+    post_nms : int, default is 100
+        Only return top `post_nms` detection results, the rest is discarded. The number is
+        based on COCO dataset which has maximum 100 objects per image. You can adjust this
+        number if expecting more objects. You can use -1 to return all detections.
+    roi_mode : str, default is align
+        ROI pooling mode. Currently support 'pool' and 'align'.
+    roi_size : tuple of int, length 2, default is (14, 14)
+        (height, width) of the ROI region.
+    stride : int, default is 16
+        Feature map stride with respect to original image.
+        This is usually the ratio between original image size and feature map size.
+    clip : float, default is None
+        Clip bounding box target to this value.
+    rpn_channel : int, default is 1024
+        Channel number used in RPN convolutional layers.
+    base_size : int
+        The width(and height) of reference anchor box.
+    scales : iterable of float, default is (8, 16, 32)
         The areas of anchor boxes.
         We use the following form to compute the shapes of anchors:
 
@@ -41,51 +69,86 @@ class CascadeRCNN(RCNN3):
             width_{anchor} = size_{base} \times scale \times \sqrt{ 1 / ratio}
             height_{anchor} = size_{base} \times scale \times \sqrt{ratio}
 
-    ratios : iterable of float
+    ratios : iterable of float, default is (0.5, 1, 2)
         The aspect ratios of anchor boxes. We expect it to be a list or tuple.
-    classes : iterable of str
-        Names of categories, its length is ``num_class``.
-    roi_mode : str
-        ROI pooling mode. Currently support 'pool' and 'align'.
-    roi_size : tuple of int, length 2
-        (height, width) of the ROI region.
-    stride : int, default is 16
-        Feature map stride with respect to original image.
-        This is usually the ratio between original image size and feature map size.
-    rpn_channel : int, default is 1024
-        Channel number used in RPN convolutional layers.
-    nms_thresh : float, default is 0.3.
-        Non-maximum suppression threshold. You can speficy < 0 or > 1 to disable NMS.
-    nms_topk : int, default is 400
-        Apply NMS to top k detection results, use -1 to disable so that every Detection
-         result is used in NMS.
+    alloc_size : tuple of int
+        Allocate size for the anchor boxes as (H, W).
+        Usually we generate enough anchors for large feature map, e.g. 128x128.
+        Later in inference we can have variable input sizes,
+        at which time we can crop corresponding anchors from this large
+        anchor map so we can skip re-generating anchors for each input.
+    rpn_train_pre_nms : int, default is 12000
+        Filter top proposals before NMS in training of RPN.
+    rpn_train_post_nms : int, default is 2000
+        Return top proposal results after NMS in training of RPN.
+    rpn_test_pre_nms : int, default is 6000
+        Filter top proposals before NMS in testing of RPN.
+    rpn_test_post_nms : int, default is 300
+        Return top proposal results after NMS in testing of RPN.
+    rpn_nms_thresh : float, default is 0.7
+        IOU threshold for NMS. It is used to remove overlapping proposals.
+    train_pre_nms : int, default is 12000
+        Filter top proposals before NMS in training.
+    train_post_nms : int, default is 2000
+        Return top proposal results after NMS in training.
+    test_pre_nms : int, default is 6000
+        Filter top proposals before NMS in testing.
+    test_post_nms : int, default is 300
+        Return top proposal results after NMS in testing.
+    rpn_min_size : int, default is 16
+        Proposals whose size is smaller than ``min_size`` will be discarded.
     num_sample : int, default is 128
         Number of samples for RCNN targets.
     pos_iou_thresh : float, default is 0.5
         Proposal whose IOU larger than ``pos_iou_thresh`` is regarded as positive samples.
-    neg_iou_thresh_high : float, default is 0.5
-        Proposal whose IOU smaller than ``neg_iou_thresh_high``
-        and larger than ``neg_iou_thresh_low`` is regarded as negative samples.
-        Proposals with IOU in between ``pos_iou_thresh`` and ``neg_iou_thresh`` are
-        ignored.
-    neg_iou_thresh_low : float, default is 0.0
-        See ``neg_iou_thresh_high``.
     pos_ratio : float, default is 0.25
         ``pos_ratio`` defines how many positive samples (``pos_ratio * num_sample``) is
         to be sampled.
 
+    Attributes
+    ----------
+    classes : iterable of str
+        Names of categories, its length is ``num_class``.
+    num_class : int
+        Number of positive categories.
+    short : int
+        Input image short side size.
+    max_size : int
+        Maximum size of input image long side.
+    train_patterns : str
+        Matching pattern for trainable parameters.
+    nms_thresh : float
+        Non-maximum suppression threshold. You can speficy < 0 or > 1 to disable NMS.
+    nms_topk : int
+        Apply NMS to top k detection results, use -1 to disable so that every Detection
+         result is used in NMS.
+    post_nms : int
+        Only return top `post_nms` detection results, the rest is discarded. The number is
+        based on COCO dataset which has maximum 100 objects per image. You can adjust this
+        number if expecting more objects. You can use -1 to return all detections.
+    target_generator : gluon.Block
+        Generate training targets with boxes, samples, matches, gt_label and gt_box.
+
     """
-    def __init__(self, features, top_features, 
-                 scales, ratios, classes, roi_mode, roi_size,
-                 stride=16, rpn_channel=1024, rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
-                 rpn_test_pre_nms=6000, rpn_test_post_nms=300,
-                 num_sample=128, pos_iou_thresh=0.5, neg_iou_thresh_high=0.5,
-                 neg_iou_thresh_low=0.0, pos_ratio=0.25, **kwargs):
+    def __init__(self, features, top_features, classes,
+                 short, max_size, train_patterns=None,
+                 nms_thresh=0.3, nms_topk=400, post_nms=100,
+                 roi_mode='align', roi_size=(14, 14), stride=16, clip=None,
+                 rpn_channel=1024, base_size=16, scales=(0.5, 1, 2),
+                 ratios=(8, 16, 32), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+                 rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+                 rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+                 num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25, **kwargs):
         super(CascadeRCNN, self).__init__(
-            features, top_features,classes, roi_mode, roi_size, **kwargs)
+            features=features, top_features=top_features, classes=classes,
+            short=short, max_size=max_size, train_patterns=train_patterns,
+            nms_thresh=nms_thresh, nms_topk=nms_topk, post_nms=post_nms,
+            roi_mode=roi_mode, roi_size=roi_size, stride=stride, clip=clip, **kwargs)
+
         self.stride = stride
         self._max_batch = 1  # currently only support batch size = 1
         self._max_roi = 100000  # maximum allowed ROIs
+        self._rpn_train_pre_nms = rpn_train_pre_nms
         stds_2nd = (.05, .05, .1, .1)
         stds_3rd = (.033, .033, .067, .067)
         means_2nd= (0., 0., 0., 0.)
@@ -96,16 +159,20 @@ class CascadeRCNN(RCNN3):
                                 num_sample=256, pos_iou_thresh=0.7,
                                 neg_iou_thresh=0.3, pos_ratio=0.5,
                                 stds=(1., 1., 1., 1.))])
+        self._rpn_box_clip = set([ClipRPNBox(rpn_train_pre_nms = rpn_train_pre_nms)])
         with self.name_scope():
-            self.rpn = RPN(rpn_channel, stride, scales=scales, ratios=ratios,
-                           train_pre_nms=rpn_train_pre_nms, train_post_nms=rpn_train_post_nms,
-                           test_pre_nms=rpn_test_pre_nms, test_post_nms=rpn_test_post_nms)
-            self.sampler = RCNNTargetSampler(num_sample, pos_iou_thresh, neg_iou_thresh_high,
-                                             neg_iou_thresh_low, pos_ratio,1)
+            self.rpn = RPN(
+                channels=rpn_channel, stride=stride, base_size=base_size,
+                scales=scales, ratios=ratios, alloc_size=alloc_size,
+                clip=clip, nms_thresh=rpn_nms_thresh, train_pre_nms=rpn_train_pre_nms,
+                train_post_nms=rpn_train_post_nms, test_pre_nms=rpn_test_pre_nms,
+                test_post_nms=rpn_test_post_nms, min_size=rpn_min_size)
+            self.sampler = RCNNTargetSampler(-1, pos_iou_thresh, pos_iou_thresh,
+                                             0.0, pos_ratio,1)
             self.sampler_2nd = RCNNTargetSampler(-1, 0.6, 0.6,
-                                             neg_iou_thresh_low, pos_ratio,0.95)
+                                             0.0, pos_ratio,0.95)
             self.sampler_3rd = RCNNTargetSampler(-1, 0.7, 0.7,
-                                             neg_iou_thresh_low, pos_ratio,0.95)
+                                             0.0, pos_ratio,0.95)
             self.box_decoder_2nd = NormalizedBoxCenterDecoder(stds=(.05, .05, .1, .1))
             self.box_decoder_3rd = NormalizedBoxCenterDecoder(stds=(.033, .033, .067, .067))
 
@@ -113,12 +180,10 @@ class CascadeRCNN(RCNN3):
     @property
     def target_generator(self):
         """Returns stored target generator
-
         Returns
         -------
         mxnet.gluon.HybridBlock
             The RCNN target generator
-
         """
         return list(self._target_generator)[0]
     @property
@@ -129,15 +194,10 @@ class CascadeRCNN(RCNN3):
         return list(self._target_generator_3rd)[0]
     @property
     def rpn_target_generator(self):
-        """Returns stored target generator
-
-        Returns
-        -------
-        mxnet.gluon.HybridBlock
-            The RPN target generator
-
-        """
         return list(self._rpn_target_generator)[0]
+    @property
+    def rpn_box_clip(self):
+        return list(self._rpn_box_clip)[0]
 
     def extract_ROI(self, F, feature, bbox):
 
@@ -147,20 +207,7 @@ class CascadeRCNN(RCNN3):
         if self._roi_mode == 'pool':
             pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
         elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
-        else:
-            raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
-        return pooled_feat
-
-    def ROIExtraction(self, F, feature, bbox):
-
-        roi = self.add_batchid(F, bbox)
-
-        # ROI features
-        if self._roi_mode == 'pool':
-            pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
-        elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
+            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride, sample_ratio=2)
         else:
             raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
         return pooled_feat
@@ -179,23 +226,17 @@ class CascadeRCNN(RCNN3):
             roi = roi.reshape((1,-1, 4))
             return roi
 
-
     def cascade_rcnn(self, F, feature, roi, sampler, gt_box):
         """Forward Faster-RCNN network.
-
         The behavior during traing and inference is different.
-
         Parameters
         ----------
         feature: feature map
         roi: ROI region to be pooled (decoded bbox)
-
-
         Returns
         -------
         box_pred:  bbox prediction(encoded bbox) 
         cls_pred:  cls prediction
-
         """
 
         if autograd.is_training():
@@ -219,27 +260,27 @@ class CascadeRCNN(RCNN3):
     # pylint: disable=arguments-differ
     def hybrid_forward(self, F, x, gt_box=None):
         """Forward Faster-RCNN network.
-
         The behavior during traing and inference is different.
-
         Parameters
         ----------
         x : mxnet.nd.NDArray or mxnet.symbol
             The network input tensor.
         gt_box : type, only required during training
             The ground-truth bbox tensor with shape (1, N, 4).
-
         Returns
         -------
         (ids, scores, bboxes)
             During inference, returns final class id, confidence scores, bounding
             boxes.
-
         """
         feat = self.features(x)
         # RPN proposals
         if autograd.is_training():
             _, rpn_box, raw_rpn_score, raw_rpn_box, anchors = self.rpn(feat, F.zeros_like(x))
+            rpn_index = F.Custom(rpn_box, op_type='clip_rpn_box')
+            index = int(rpn_index.sum().asnumpy())
+            rpn_box = rpn_box.slice_axis(axis=1,begin=0,end =index)
+            #rpn_box = self.rpn_box_clip(rpn_box)
             # sample 128 roi
             assert gt_box is not None
             
@@ -249,6 +290,12 @@ class CascadeRCNN(RCNN3):
         
         if autograd.is_training():
             #rpn_box, samples, matches = self.sampler(rpn_box, gt_box)
+            if index < 512:
+                self.sampler = RCNNTargetSampler(-1, 0.5, 0.5,
+                                             0.0, 0.25,1)
+            else:
+                self.sampler = RCNNTargetSampler(512, 0.5, 0.5,
+                                             0.0, 0.25,1)
             cls_pred, box_pred, sample_data_1st = self.cascade_rcnn(F=F, feature=feat, roi=rpn_box, sampler=self.sampler, gt_box=gt_box)            
             
             roi_2nd = self.decode_bbox(source_bbox=sample_data_1st.roi, encoded_bbox=box_pred, stds=(.05, .05, .1, .1))
@@ -312,10 +359,7 @@ class CascadeRCNN(RCNN3):
 
 
 
-def get_cascade_rcnn(name, features, top_features,
-                    scales, ratios, classes,
-                    roi_mode, roi_size, dataset, stride=16,
-                    rpn_channel=1024, pretrained=False, ctx=mx.cpu(),
+def get_cascade_rcnn(name, dataset, pretrained=False, ctx=mx.cpu(),
                     root=os.path.join('~', '.mxnet', 'models'), **kwargs):
     r"""Utility function to return faster rcnn networks.
 
@@ -323,34 +367,8 @@ def get_cascade_rcnn(name, features, top_features,
     ----------
     name : str
         Model name.
-    features : gluon.HybridBlock
-        Base feature extractor before feature pooling layer.
-    top_features : gluon.HybridBlock
-        Tail feature extractor after feature pooling layer.
-    scales : iterable of float
-        The areas of anchor boxes.
-        We use the following form to compute the shapes of anchors:
-
-        .. math::
-
-            width_{anchor} = size_{base} \times scale \times \sqrt{ 1 / ratio}
-            height_{anchor} = size_{base} \times scale \times \sqrt{ratio}
-
-    ratios : iterable of float
-        The aspect ratios of anchor boxes. We expect it to be a list or tuple.
-    classes : iterable of str
-        Names of categories, its length is ``num_class``.
-    roi_mode : str
-        ROI pooling mode. Currently support 'pool' and 'align'.
-    roi_size : tuple of int, length 2
-        (height, width) of the ROI region.
     dataset : str
         The name of dataset.
-    stride : int, default is 16
-        Feature map stride with respect to original image.
-        This is usually the ratio between original image size and feature map size.
-    rpn_channel : int, default is 1024
-        Channel number used in RPN convolutional layers.
     pretrained : bool, optional, default is False
         Load pretrained weights.
     ctx : mxnet.Context
@@ -364,11 +382,7 @@ def get_cascade_rcnn(name, features, top_features,
         The Faster-RCNN network.
 
     """
-
-
-    net = CascadeRCNN(features, top_features, 
-                     scales, ratios, classes, roi_mode, roi_size,
-                     stride=stride, rpn_channel=rpn_channel, **kwargs)
+    net = CascadeRCNN( **kwargs)
     if pretrained:
         from ..model_store import get_model_file
         full_name = '_'.join(('cascade_rcnn', name, dataset))
@@ -668,10 +682,15 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
     # top_features_2nd =base_network.features[35:39]
     # top_features_3rd =base_network.features[39:43]
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
-    return get_cascade_rcnn('vgg16_pruned', features, top_features,
-                           scales=( 8,16, 32),
-                           ratios=(0.5, 1, 2), classes=classes, dataset='voc',
-                           roi_mode='align', roi_size=(7, 7), stride=16,
-                           rpn_channel=512, rpn_train_pre_nms=12000, rpn_train_post_nms=500,
-                           train_patterns=train_patterns,
-                           pretrained=pretrained, **kwargs)
+    return get_cascade_rcnn(
+        name='vgg16_pruned', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, classes=classes,
+        short=600, max_size=1000, train_patterns=train_patterns,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
+        rpn_channel=512, base_size=16, scales=(8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=3000, rpn_train_post_nms=500,
+        rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)

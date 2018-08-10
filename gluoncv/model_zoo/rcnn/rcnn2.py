@@ -50,20 +50,26 @@ class RCNN2(gluon.HybridBlock):
         Matching pattern for trainable parameters.
 
     """
-    def __init__(self, features, top_features,top_features_2nd,top_features_3rd, classes, roi_mode, roi_size,
-                 nms_thresh=0.3, nms_topk=400, post_nms=100, train_patterns=None, **kwargs):
+    def __init__(self, features, top_features, classes,
+                 short, max_size, train_patterns,
+                 nms_thresh, nms_topk, post_nms,
+                 roi_mode, roi_size, stride, clip, **kwargs):
         super(RCNN2, self).__init__(**kwargs)
         self.classes = classes
         self.num_class = len(classes)
+        self.short = short
+        self.max_size = max_size
+        self.train_patterns = train_patterns
+        self.nms_thresh = nms_thresh
+        self.nms_topk = nms_topk
+        self.post_nms = post_nms
+
         assert self.num_class > 0, "Invalid number of class : {}".format(self.num_class)
         assert roi_mode.lower() in ['align', 'pool'], "Invalid roi_mode: {}".format(roi_mode)
         self._roi_mode = roi_mode.lower()
         assert len(roi_size) == 2, "Require (h, w) as roi_size, given {}".format(roi_size)
         self._roi_size = roi_size
-        self.nms_thresh = nms_thresh
-        self.nms_topk = nms_topk
-        self.post_nms = post_nms
-        self.train_patterns = train_patterns
+        self._stride = stride
 
         with self.name_scope():
             self.features = features
