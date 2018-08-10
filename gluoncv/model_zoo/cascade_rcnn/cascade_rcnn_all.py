@@ -287,10 +287,7 @@ class CascadeRCNN(RCNN2):
 
 
 
-def get_cascade_rcnn(name, features, top_features,top_features_2nd,top_features_3rd, 
-                    scales, ratios, classes,
-                    roi_mode, roi_size, dataset, stride=16,
-                    rpn_channel=1024, pretrained=False, ctx=mx.cpu(),
+def get_cascade_rcnn(name, dataset, pretrained=False, ctx=mx.cpu(),
                     root=os.path.join('~', '.mxnet', 'models'), **kwargs):
     r"""Utility function to return faster rcnn networks.
 
@@ -298,34 +295,8 @@ def get_cascade_rcnn(name, features, top_features,top_features_2nd,top_features_
     ----------
     name : str
         Model name.
-    features : gluon.HybridBlock
-        Base feature extractor before feature pooling layer.
-    top_features : gluon.HybridBlock
-        Tail feature extractor after feature pooling layer.
-    scales : iterable of float
-        The areas of anchor boxes.
-        We use the following form to compute the shapes of anchors:
-
-        .. math::
-
-            width_{anchor} = size_{base} \times scale \times \sqrt{ 1 / ratio}
-            height_{anchor} = size_{base} \times scale \times \sqrt{ratio}
-
-    ratios : iterable of float
-        The aspect ratios of anchor boxes. We expect it to be a list or tuple.
-    classes : iterable of str
-        Names of categories, its length is ``num_class``.
-    roi_mode : str
-        ROI pooling mode. Currently support 'pool' and 'align'.
-    roi_size : tuple of int, length 2
-        (height, width) of the ROI region.
     dataset : str
         The name of dataset.
-    stride : int, default is 16
-        Feature map stride with respect to original image.
-        This is usually the ratio between original image size and feature map size.
-    rpn_channel : int, default is 1024
-        Channel number used in RPN convolutional layers.
     pretrained : bool, optional, default is False
         Load pretrained weights.
     ctx : mxnet.Context
@@ -339,11 +310,7 @@ def get_cascade_rcnn(name, features, top_features,top_features_2nd,top_features_
         The Faster-RCNN network.
 
     """
-
-
-    net = CascadeRCNN(features, top_features, top_features_2nd,top_features_3rd,
-                     scales, ratios, classes, roi_mode, roi_size,
-                     stride=stride, rpn_channel=rpn_channel, **kwargs)
+    net = CascadeRCNN( **kwargs)
     if pretrained:
         from ..model_store import get_model_file
         full_name = '_'.join(('cascade_rcnn', name, dataset))
