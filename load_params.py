@@ -36,7 +36,7 @@ def update_key(k):
 		return k
 
 
-filename ='./models/VGG_16_fc2048_prune-0000.params'
+filename ='./models/VGG_16_fc2048_prune.params'
 filename1 ='./models/VGG_16_fc2048_prune_cascade.params'
 loaded = [(k[4:] if k.startswith('arg:') or k.startswith('aux:') else k, v) \
           for k, v in mx.nd.load(filename).items()]
