@@ -94,6 +94,7 @@ class CascadeRCNN(RCNN2):
         self._max_batch = 1  # currently only support batch size = 1
         self._max_roi = 100000  # maximum allowed ROIs
         self._rpn_train_pre_nms = rpn_train_pre_nms
+        self._num_sample = num_sample
         stds_2nd = (.05, .05, .1, .1)
         stds_3rd = (.033, .033, .067, .067)
         means_2nd= (0., 0., 0., 0.)
@@ -112,7 +113,7 @@ class CascadeRCNN(RCNN2):
                 clip=clip, nms_thresh=rpn_nms_thresh, train_pre_nms=rpn_train_pre_nms,
                 train_post_nms=rpn_train_post_nms, test_pre_nms=rpn_test_pre_nms,
                 test_post_nms=rpn_test_post_nms, min_size=rpn_min_size)
-            self.sampler = RCNNTargetSampler(-1, pos_iou_thresh, pos_iou_thresh,
+            self.sampler = RCNNTargetSampler(self._num_sample, pos_iou_thresh, pos_iou_thresh,
                                              0.0, pos_ratio,1)
             self.sampler_2nd = RCNNTargetSampler(-1, 0.6, 0.6,
                                              0.0, pos_ratio,0.95)
@@ -200,11 +201,11 @@ class CascadeRCNN(RCNN2):
             index = int(rpn_index.sum().asnumpy())
             rpn_box = rpn_box.slice_axis(axis=1,begin=0,end =index)
             #rpn_box = self.rpn_box_clip(rpn_box)
-            if index < 256:
+            if index < self._num_sample:
                 self.sampler = RCNNTargetSampler(-1, 0.5, 0.5,
                                              0.0, 0.25,1)
             else:
-                self.sampler = RCNNTargetSampler(256, 0.5, 0.5,
+                self.sampler = RCNNTargetSampler(self._num_sample, 0.5, 0.5,
                                              0.0, 0.25,1)
             # sample 128 roi
             assert gt_box is not None
@@ -633,7 +634,7 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=3000, rpn_train_post_nms=-1,
+        rpn_train_pre_nms=3000, rpn_train_post_nms=3000,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
-        num_sample=-1, pos_iou_thresh=0.5, pos_ratio=0.25,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
