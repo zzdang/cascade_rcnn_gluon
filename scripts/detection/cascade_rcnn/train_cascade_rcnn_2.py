@@ -401,13 +401,11 @@ def train(net, train_data, val_data, eval_metric, ctx, args):
                         gt_label = label[:, :, 4:5]
                         gt_box = label[:, :, :4]
                         data = data[:,:,:int(im_info[0,1].asnumpy()[0]),:int(im_info[0,0].asnumpy()[0])]
-                        gt_label = label[:, :, 4:5]
-                        gt_box = label[:, :, :4]
      
                         rpn_pred, cascade_rcnn_pred = net(data, gt_box)
                         rpn_score, rpn_box, anchors = rpn_pred
                         rpn_cls_targets, rpn_box_targets, rpn_box_masks = net.rpn_target_generator(
-                                                    gt_box, anchors[0],\
+                                                    gt_box[0], anchors[0],\
                                                      im_info[0,0],im_info[0,1])
                         # losses of rpn
                         rpn_loss1, rpn_loss2, rpn_score, rpn_box = get_rpn_cls_loss(rpn_pred, rpn_cls_targets, rpn_box_targets, rpn_box_masks)

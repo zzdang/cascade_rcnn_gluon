@@ -155,6 +155,7 @@ class RPNTargetGenerator(gluon.Block):
 
             # mask out invalid anchors, (N, 4)
             a_xmin, a_ymin, a_xmax, a_ymax = F.split(anchor, num_outputs=4, axis=-1)
+            #print(bbox.shape,anchor.shape)
             invalid_mask = (a_xmin < 0) + (a_ymin < 0) + (a_xmax >= width) + (a_ymax >= height)
             invalid_mask = F.repeat(invalid_mask, repeats=bbox.shape[0], axis=-1)
             ious = F.where(invalid_mask, mx.nd.ones_like(ious) * -1, ious)

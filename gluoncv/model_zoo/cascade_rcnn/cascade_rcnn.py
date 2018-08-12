@@ -91,7 +91,7 @@ class CascadeRCNN(RCNN2):
             roi_mode=roi_mode, roi_size=roi_size, stride=stride, clip=clip, **kwargs)
 
         self.stride = stride
-        self._max_batch = 1  # currently only support batch size = 1
+        self._max_batch = 4  # currently only support batch size = 1
         self._max_roi = 100000  # maximum allowed ROIs
         self._rpn_train_pre_nms = rpn_train_pre_nms
         self._num_sample = num_sample
@@ -636,5 +636,5 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
         rpn_train_pre_nms=3000, rpn_train_post_nms=3000,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
-        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        num_sample=512, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
