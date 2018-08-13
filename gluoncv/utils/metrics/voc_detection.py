@@ -100,11 +100,12 @@ class VOCMApMetric(mx.metric.EvalMetric):
 
         if gt_difficults is None:
             gt_difficults = [None for _ in gt_labels]
-
+        #print("pred_labels:{} pred_bboxes:{}".format(pred_labels.shape,pred_bboxes.shape))
         for pred_bbox, pred_label, pred_score, gt_bbox, gt_label, gt_difficult in zip(
                 *[as_numpy(x) for x in [pred_bboxes, pred_labels, pred_scores,
                                         gt_bboxes, gt_labels, gt_difficults]]):
             # strip padding -1 for pred and gt
+            #print("pred_label:{} pred_bbox:{}".format(pred_label.shape,pred_bbox.shape))
             valid_pred = np.where(pred_label.flat >= 0)[0]
             pred_bbox = pred_bbox[valid_pred, :]
             pred_label = pred_label.flat[valid_pred].astype(int)

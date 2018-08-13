@@ -149,22 +149,33 @@ class RPNTargetGenerator(gluon.Block):
         """
         F = mx.nd
         with autograd.pause():
-            # calculate ious between (N, 4) anchors and (M, 4) bbox ground-truths
-            # ious is (N, M)
-            ious = mx.nd.contrib.box_iou(anchor, bbox, format='corner')
+            new_rois = []
+            new_samples = []
+            new_matches = []
+            for i in range(4):
+                bbox_ =  F.squeeze(F.slice_axis(bbox, axis=0, begin=i, end=i+1), axis=0)
+                #print(bbox_.shape,anchor.shape)
+                width_ =  F.squeeze(F.slice_axis(width, axis=0, begin=i, end=i+1), axis=0)
+                height_ =  F.squeeze(F.slice_axis(height, axis=0, begin=i, end=i+1), axis=0)
+                # calculate ious between (N, 4) anchors and (M, 4) bbox ground-truths
+                # ious is (N, M)
+                ious = mx.nd.contrib.box_iou(anchor, bbox_, format='corner')
 
-            # mask out invalid anchors, (N, 4)
-            a_xmin, a_ymin, a_xmax, a_ymax = F.split(anchor, num_outputs=4, axis=-1)
-            #print(bbox.shape,anchor.shape)
-            invalid_mask = (a_xmin < 0) + (a_ymin < 0) + (a_xmax >= width) + (a_ymax >= height)
-            invalid_mask = F.repeat(invalid_mask, repeats=bbox.shape[0], axis=-1)
-            ious = F.where(invalid_mask, mx.nd.ones_like(ious) * -1, ious)
+                # mask out invalid anchors, (N, 4)
+                a_xmin, a_ymin, a_xmax, a_ymax = F.split(anchor, num_outputs=4, axis=-1)
+                invalid_mask = (a_xmin < 0) + (a_ymin < 0) + (a_xmax >= width_) + (a_ymax >= height_)
+                invalid_mask = F.repeat(invalid_mask, repeats=bbox_.shape[0], axis=-1)
+                #print("invalid_mask shape:{} ious shape:{}".format(invalid_mask.shape, ious.shape))
+                ious = F.where(invalid_mask, mx.nd.ones_like(ious) * -1, ious)
 
-            samples, matches = self._sampler(ious)
-
+                samples, matches = self._sampler(ious)
+                new_samples.append(samples)
+                new_matches.append(matches)
+            new_samples = F.stack(*new_samples, axis=0)
+            new_matches = F.stack(*new_matches, axis=0)
             # training targets for RPN
-            cls_target, _ = self._cls_encoder(samples)
+            cls_target, _ = self._cls_encoder(new_samples)
             box_target, box_mask = self._box_encoder(
-                samples.expand_dims(axis=0), matches.expand_dims(0),
-                anchor.expand_dims(axis=0), bbox.expand_dims(0))
-        return cls_target, box_target[0], box_mask[0]
+                new_samples, new_matches,
+                anchor.expand_dims(axis=0), bbox)
+        return cls_target, box_target, box_mask

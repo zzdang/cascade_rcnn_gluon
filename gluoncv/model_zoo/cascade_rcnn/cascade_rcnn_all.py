@@ -91,9 +91,10 @@ class CascadeRCNN(RCNN2):
             roi_mode=roi_mode, roi_size=roi_size, stride=stride, clip=clip, **kwargs)
 
         self.stride = stride
-        self._max_batch = 1  # currently only support batch size = 1
+        self._max_batch = 4  # currently only support batch size = 1
         self._max_roi = 100000  # maximum allowed ROIs
         self._rpn_train_pre_nms = rpn_train_pre_nms
+        self._num_sample = num_sample
         stds_2nd = (.05, .05, .1, .1)
         stds_3rd = (.033, .033, .067, .067)
         means_2nd= (0., 0., 0., 0.)
@@ -112,7 +113,7 @@ class CascadeRCNN(RCNN2):
                 clip=clip, nms_thresh=rpn_nms_thresh, train_pre_nms=rpn_train_pre_nms,
                 train_post_nms=rpn_train_post_nms, test_pre_nms=rpn_test_pre_nms,
                 test_post_nms=rpn_test_post_nms, min_size=rpn_min_size)
-            self.sampler = RCNNTargetSampler(-1, pos_iou_thresh, pos_iou_thresh,
+            self.sampler = RCNNTargetSampler(self._num_sample, pos_iou_thresh, pos_iou_thresh,
                                              0.0, pos_ratio,1)
             self.sampler_2nd = RCNNTargetSampler(-1, 0.6, 0.6,
                                              0.0, pos_ratio,0.95)
@@ -200,11 +201,11 @@ class CascadeRCNN(RCNN2):
             index = int(rpn_index.sum().asnumpy())
             rpn_box = rpn_box.slice_axis(axis=1,begin=0,end =index)
             #rpn_box = self.rpn_box_clip(rpn_box)
-            if index < 512:
+            if index < self._num_sample:
                 self.sampler = RCNNTargetSampler(-1, 0.5, 0.5,
                                              0.0, 0.25,1)
             else:
-                self.sampler = RCNNTargetSampler(512, 0.5, 0.5,
+                self.sampler = RCNNTargetSampler(self._num_sample, 0.5, 0.5,
                                              0.0, 0.25,1)
             # sample 128 roi
             assert gt_box is not None
@@ -338,14 +339,14 @@ def cascade_rcnn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwar
 
     Examples
     --------
-    >>> model = get_cascade_rcnn_resnet50_v1b_voc(pretrained=True)
+    >>> model = get_faster_rcnn_resnet50_v1b_voc(pretrained=True)
     >>> print(model)
     """
     from ..resnetv1b import resnet50_v1b
     from ...data import VOCDetection
     classes = VOCDetection.CLASSES
     pretrained_base = False if pretrained else pretrained_base
-    base_network = resnet50_v1b(pretrained=pretrained_base, dilated=False)
+    base_network = resnet50_v1b(pretrained=pretrained_base, dilated=False, use_global_stats=True)
     features = nn.HybridSequential()
     top_features = nn.HybridSequential()
     for layer in ['conv1', 'bn1', 'relu', 'maxpool', 'layer1', 'layer2', 'layer3']:
@@ -353,11 +354,18 @@ def cascade_rcnn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwar
     for layer in ['layer4']:
         top_features.add(getattr(base_network, layer))
     train_patterns = '|'.join(['.*dense', '.*rpn', '.*down(2|3|4)_conv', '.*layers(2|3|4)_conv'])
-    return get_cascade_rcnn('resnet50_v1b', features, top_features, scales=(2, 4, 8, 16, 32),
-                           ratios=(0.5, 1, 2), classes=classes, dataset='voc',
-                           roi_mode='align', roi_size=(14, 14), stride=16,
-                           rpn_channel=1024, train_patterns=train_patterns,
-                           pretrained=pretrained, **kwargs)
+    return get_cascade_rcnn(
+        name='resnet50_v1b', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, classes=classes,
+        short=600, max_size=1000, train_patterns=train_patterns,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='align', roi_size=(14, 14), stride=16, clip=None,
+        rpn_channel=1024, base_size=16, scales=(2, 4, 8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=5000, rpn_train_post_nms=5000,
+        rpn_test_pre_nms=3000, rpn_test_post_nms=300, rpn_min_size=16,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)
 
 def cascade_rcnn_resnet50_v1b_coco(pretrained=False, pretrained_base=True, **kwargs):
     r"""Faster RCNN model from the paper
@@ -378,14 +386,14 @@ def cascade_rcnn_resnet50_v1b_coco(pretrained=False, pretrained_base=True, **kwa
 
     Examples
     --------
-    >>> model = get_cascade_rcnn_resnet50_v1b_coco(pretrained=True)
+    >>> model = get_faster_rcnn_resnet50_v1b_coco(pretrained=True)
     >>> print(model)
     """
     from ..resnetv1b import resnet50_v1b
     from ...data import COCODetection
     classes = COCODetection.CLASSES
     pretrained_base = False if pretrained else pretrained_base
-    base_network = resnet50_v1b(pretrained=pretrained_base, dilated=False)
+    base_network = resnet50_v1b(pretrained=pretrained_base, dilated=False, use_global_stats=True)
     features = nn.HybridSequential()
     top_features = nn.HybridSequential()
     for layer in ['conv1', 'bn1', 'relu', 'maxpool', 'layer1', 'layer2', 'layer3']:
@@ -393,11 +401,19 @@ def cascade_rcnn_resnet50_v1b_coco(pretrained=False, pretrained_base=True, **kwa
     for layer in ['layer4']:
         top_features.add(getattr(base_network, layer))
     train_patterns = '|'.join(['.*dense', '.*rpn', '.*down(2|3|4)_conv', '.*layers(2|3|4)_conv'])
-    return get_cascade_rcnn('resnet50_v1b', features, top_features, scales=(2, 4, 8, 16, 32),
-                           ratios=(0.5, 1, 2), classes=classes, dataset='coco',
-                           roi_mode='align', roi_size=(14, 14), stride=16,
-                           rpn_channel=1024, train_patterns=train_patterns,
-                           pretrained=pretrained, **kwargs)
+    return get_cascade_rcnn(
+        name='resnet50_v1b', dataset='coco', pretrained=pretrained,
+        features=features, top_features=top_features, classes=classes,
+        short=800, max_size=1333, train_patterns=train_patterns,
+        nms_thresh=0.5, nms_topk=-1, post_nms=-1,
+        roi_mode='align', roi_size=(14, 14), stride=16, clip=4.42,
+        rpn_channel=1024, base_size=16, scales=(2, 4, 8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=1000, rpn_min_size=0,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)
+
 
 def cascade_rcnn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwargs):
     r"""Faster RCNN model from the paper
@@ -618,7 +634,7 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=3000, rpn_train_post_nms=-1,
+        rpn_train_pre_nms=3000, rpn_train_post_nms=3000,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
-        num_sample=-1, pos_iou_thresh=0.5, pos_ratio=0.25,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

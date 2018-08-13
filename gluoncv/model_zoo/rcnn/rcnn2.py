@@ -81,7 +81,7 @@ class RCNN2(gluon.HybridBlock):
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
             self.cls_decoder = MultiPerClassDecoder(num_class=self.num_class+1)
             self.box_to_center = BBoxCornerToCenter()
-            self.box_decoder = NormalizedBoxCenterDecoder()
+            self.box_decoder = NormalizedBoxCenterDecoder(clip=clip)
             # cascade 2nd and 3rd rcnn
             self.top_features_2nd = top_features
             self.class_predictor_2nd = nn.Dense(

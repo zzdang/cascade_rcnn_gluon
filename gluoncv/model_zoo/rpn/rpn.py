@@ -95,7 +95,9 @@ class RPN(gluon.HybridBlock):
         anchors = self.anchor_generator(x)
         x = self.conv1(x)
         raw_rpn_scores = self.score(x).transpose(axes=(0, 2, 3, 1)).reshape((0, -1, 1))
+        #print("raw_rpn_scores shape :{}".format(raw_rpn_scores.shape))
         rpn_scores = F.sigmoid(F.stop_gradient(raw_rpn_scores))
+        #print("rpn_scores shape :{}".format(rpn_scores.shape))
         rpn_box_pred = self.loc(x).transpose(axes=(0, 2, 3, 1)).reshape((0, -1, 4))
         rpn_score, rpn_box = self.region_proposaler(
             anchors, rpn_scores, F.stop_gradient(rpn_box_pred), img)

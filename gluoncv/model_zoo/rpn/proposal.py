@@ -97,7 +97,6 @@ class RPNProposal(gluon.HybridBlock):
             pre = F.concat(score, roi, dim=-1)
             tmp = F.contrib.box_nms(pre, overlap_thresh=self._nms_thresh, topk=pre_nms,
                                     coord_start=1, score_index=0, id_index=-1, force_suppress=True)
-
             # slice post_nms number of boxes
             result = F.slice_axis(tmp, axis=1, begin=0, end=post_nms)
             rpn_scores = F.slice_axis(result, axis=-1, begin=0, end=1)
