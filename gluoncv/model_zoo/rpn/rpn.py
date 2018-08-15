@@ -74,7 +74,7 @@ class RPN(gluon.HybridBlock):
             self.loc = nn.Conv2D(anchor_depth * 4, 1, 1, 0, weight_initializer=weight_initializer)
 
     # pylint: disable=arguments-differ
-    def hybrid_forward(self, F, x, img):
+    def hybrid_forward(self, F, x, im_info):
         """Forward RPN.
 
         The behavior during traing and inference is different.
@@ -100,7 +100,7 @@ class RPN(gluon.HybridBlock):
         #print("rpn_scores shape :{}".format(rpn_scores.shape))
         rpn_box_pred = self.loc(x).transpose(axes=(0, 2, 3, 1)).reshape((0, -1, 4))
         rpn_score, rpn_box = self.region_proposaler(
-            anchors, rpn_scores, F.stop_gradient(rpn_box_pred), img)
+            anchors, rpn_scores, F.stop_gradient(rpn_box_pred), im_info)
         if autograd.is_training():
             # return raw predictions as well in training for bp
             return rpn_score, rpn_box, raw_rpn_scores, rpn_box_pred, anchors

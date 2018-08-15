@@ -189,7 +189,7 @@ def get_dataloader(net, train_dataset, val_dataset, batch_size, num_workers):
     train_loader = mx.gluon.data.DataLoader(
         train_dataset.transform(FasterRCNNDefaultTrainTransform(net.short, net.max_size, net)),
         batch_size, True, batchify_fn=train_bfn, last_batch='rollover', num_workers=num_workers)
-    val_bfn = batchify.Tuple(*[batchify.Append() for _ in range(3)])
+    val_bfn = batchify.Tuple(*[batchify.Append() for _ in range(4)])
     val_loader = mx.gluon.data.DataLoader(
         val_dataset.transform(FasterRCNNDefaultValTransform(net.short, net.max_size)),
         batch_size, False, batchify_fn=val_bfn, last_batch='keep', num_workers=num_workers)
@@ -232,20 +232,20 @@ def validate(net, val_data, ctx, eval_metric):
     net.set_nms(nms_thresh=0.3, nms_topk=400)
     net.hybridize(active =False,static_alloc=True)
     for batch in val_data:
-        batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,3)]
+        batch = [gluon.utils.split_and_load(mx.nd.concatenate(batch[it]), ctx_list=ctx, batch_axis=0) for it in range(0,4)]
         det_bboxes = []
         det_ids = []
         det_scores = []
         gt_bboxes = []
         gt_ids = []
         gt_difficults = []
-        for x, y, im_scale in zip(*batch):
+        for x, y, im_scale, im_info in zip(*batch):
             # get prediction results
-            ids, scores, bboxes = net(x)
+            ids, scores, bboxes = net(x,im_info)
             det_ids.append(ids)
             det_scores.append(scores)
             # clip to image size
-            det_bboxes.append(mx.nd.Custom(bboxes, x, op_type='bbox_clip_to_image'))
+            det_bboxes.append(mx.nd.Custom(bboxes, im_info, op_type='bbox_clip_to_image'))
             # rescale to original resolution
             #im_scale = im_scale.reshape((-1)).asscalar()
             #det_bboxes[-1] *= im_scale
@@ -379,6 +379,12 @@ def train(net, train_data, val_data, eval_metric, ctx, args):
         btic = time.time()
         net.hybridize(active =False,static_alloc=True)
         base_lr = trainer.learning_rate
+        if not (epoch + 1) % args.val_interval:
+            # consider reduce the frequency of validation to save time
+            map_name, mean_ap = validate(net, val_data, ctx, eval_metric)
+            val_msg = '\n'.join(['{}={}'.format(k, v) for k, v in zip(map_name, mean_ap)])
+            logger.info('[Epoch {}] Validation: \n{}'.format(epoch, val_msg))
+            current_map = float(mean_ap[-1])
         #train start
         print('training  start-----------------------')
         #print(net.collect_params())
@@ -404,7 +410,7 @@ def train(net, train_data, val_data, eval_metric, ctx, args):
                     gt_box = label[:, :, :4]
                     #data = data[:,:,:int(im_info[0,1].asnumpy()[0]),:int(im_info[0,0].asnumpy()[0])]
  
-                    rpn_pred, cascade_rcnn_pred = net(data, gt_box)
+                    rpn_pred, cascade_rcnn_pred = net(data,im_info,gt_box)
                     rpn_score, rpn_box, anchors = rpn_pred
                     rpn_cls_targets, rpn_box_targets, rpn_box_masks = net.rpn_target_generator(
                                                 gt_box, anchors[0],\

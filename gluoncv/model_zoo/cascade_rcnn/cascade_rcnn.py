@@ -174,7 +174,7 @@ class CascadeRCNN(RCNN2):
             return roi
 
     # pylint: disable=arguments-differ
-    def hybrid_forward(self, F, x, gt_box=None):
+    def hybrid_forward(self, F, x, im_info, gt_box=None):
         """Forward Faster-RCNN network.
 
         The behavior during traing and inference is different.
@@ -203,7 +203,7 @@ class CascadeRCNN(RCNN2):
         feat = self.features(x)
         # RPN proposals
         if autograd.is_training():
-            rpn_score, rpn_box, raw_rpn_score, raw_rpn_box, anchors = self.rpn(feat, F.zeros_like(x))
+            rpn_score, rpn_box, raw_rpn_score, raw_rpn_box, anchors = self.rpn(feat, im_info)
             # print(rpn_box.shape)
             # rpn_index = F.Custom(rpn_box, op_type='clip_rpn_box')
             # index = int(rpn_index.sum().asnumpy())
@@ -221,7 +221,7 @@ class CascadeRCNN(RCNN2):
             assert gt_box is not None
             rpn_box, samples, matches = self.sampler(rpn_box, gt_box)
         else:
-            _, rpn_box = self.rpn(feat, F.zeros_like(x))
+            _, rpn_box = self.rpn(feat, im_info)
         # ROI features (ROI pooling or ROI Align)
         num_roi = self._num_sample if autograd.is_training() else self._rpn_test_post_nms
         pooled_feat = self.ROIExtraction(F=F, feature=feat, bbox=rpn_box)
@@ -494,9 +494,6 @@ def cascade_rcnn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwar
     for layer in ['layer4']:
         top_features.add(getattr(base_network, layer))
     train_patterns = '|'.join(['.*dense', '.*rpn', '.*stage(2|3|4)_conv'])
-    print("~~~~~")
-    print(features.collect_params())
-    print(top_features.collect_params())
     return get_cascade_rcnn('resnet50_v2a', features, top_features, scales=(2, 4, 8, 16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(14, 14), stride=16,
@@ -679,7 +676,7 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=6000, rpn_train_post_nms=300,
+        rpn_train_pre_nms=3000, rpn_train_post_nms=3000,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
-        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        num_sample=512, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

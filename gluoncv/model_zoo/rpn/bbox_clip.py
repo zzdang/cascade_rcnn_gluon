@@ -18,16 +18,25 @@ class BBoxClipToImage(mx.operator.CustomOp):
 
     def forward(self, is_train, req, in_data, out_data, aux):
         """Clip box with shape infered from image."""
+        F = mx.nd
         x = in_data[0]
-        shape_like = in_data[1]
-        height, width = shape_like.shape[-2:]
-        assert x.shape[self.axis] == 4
-        xmin, ymin, xmax, ymax = x.split(axis=self.axis, num_outputs=4)
-        xmin = xmin.clip(0, width - 1)
-        ymin = ymin.clip(0, height - 1)
-        xmax = xmax.clip(0, width - 1)
-        ymax = ymax.clip(0, height - 1)
-        out = mx.nd.concat(xmin, ymin, xmax, ymax, dim=self.axis)
+        #shape_like = in_data[1]
+        width = in_data[1][:,0]
+        height = in_data[1][:,1]
+        out_ = []
+        for i in range(4):
+            roi =  F.squeeze(F.slice_axis(x, axis=0, begin=i, end=i+1), axis=0)
+            width_ =  int(F.squeeze(F.slice_axis(width, axis=0, begin=i, end=i+1), axis=0).asnumpy())
+            height_ =  int(F.squeeze(F.slice_axis(height, axis=0, begin=i, end=i+1), axis=0).asnumpy())
+            #height, width = shape_like.shape[-2:]
+            assert roi.shape[self.axis] == 4
+            xmin, ymin, xmax, ymax = roi.split(axis=self.axis, num_outputs=4)
+            xmin = xmin.clip(0, width_ - 1)
+            ymin = ymin.clip(0, height_ - 1)
+            xmax = xmax.clip(0, width_ - 1)
+            ymax = ymax.clip(0, height_ - 1)
+            out_.append(mx.nd.concat(xmin, ymin, xmax, ymax, dim=self.axis))
+        out = F.stack(*out_, axis=0)
         self.assign(out_data[0], req[0], out)
 
     def backward(self, req, out_grad, in_data, out_data, in_grad, aux):
@@ -50,7 +59,7 @@ class BBoxClipToImageProp(mx.operator.CustomOpProp):
         self.axis = int(axis)
 
     def list_arguments(self):
-        return ['data', 'shape_like']
+        return ['data', 'im_info']
 
     def list_outputs(self):
         return ['output']

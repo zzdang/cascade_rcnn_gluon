@@ -189,4 +189,6 @@ class FasterRCNNDefaultValTransform(object):
         img_ = mx.nd.zeros((3,self._max_size, self._max_size))
         img_[:,:img.shape[1],:img.shape[2]]=img
         img_ = img_.astype(img.dtype)
-        return img_, bbox_, mx.nd.array([im_scale])
+        im_info = mx.nd.zeros(2)
+        im_info = (img.shape[2], img.shape[1])
+        return (img_, bbox_, mx.nd.array([im_scale]), im_info)

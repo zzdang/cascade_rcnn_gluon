@@ -48,7 +48,7 @@ class RPNProposal(gluon.HybridBlock):
         self._min_size = min_size
 
     #pylint: disable=arguments-differ
-    def hybrid_forward(self, F, anchor, score, bbox_pred, img):
+    def hybrid_forward(self, F, anchor, score, bbox_pred, im_info):
         """
         Generate proposals. Limit to batch-size=1 in current implementation.
         """
@@ -64,8 +64,8 @@ class RPNProposal(gluon.HybridBlock):
             roi = self._box_decoder(bbox_pred, self._box_to_center(anchor))
 
             # clip rois to image's boundary
-            # roi = F.Custom(roi, img, op_type='bbox_clip_to_image')
-            roi = self._clipper(roi, img)
+            roi = F.Custom(roi, im_info, op_type='bbox_clip_to_image')
+            #roi = self._clipper(roi, im_info)
 
             # remove bounding boxes that don't meet the min_size constraint
             # by setting them to (-1, -1, -1, -1)
