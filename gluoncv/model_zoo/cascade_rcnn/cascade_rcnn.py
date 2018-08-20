@@ -662,7 +662,6 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
     classes = VOCDetection.CLASSES
     pretrained_base = False if pretrained else pretrained_base
     base_network = vgg16_pruned(pretrained=pretrained_base)
-    print(base_network)
     features = base_network.features[:30]
     top_features =base_network.features[31:35]
     # top_features_2nd =base_network.features[35:39]
@@ -674,9 +673,9 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         short=600, max_size=1000, train_patterns=train_patterns,
         nms_thresh=0.3, nms_topk=400, post_nms=100,
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
-        rpn_channel=512, base_size=16, scales=(8, 16, 32),
+        rpn_channel=1024, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=3000, rpn_train_post_nms=3000,
-        rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
-        num_sample=512, pos_iou_thresh=0.5, pos_ratio=0.25,
+        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

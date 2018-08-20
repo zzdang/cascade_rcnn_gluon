@@ -145,10 +145,12 @@ class FasterRCNNDefaultTrainTransform(object):
         img_[:,:img.shape[1],:img.shape[2]]=img
         img_ = img_.astype(img.dtype)
         im_info = mx.nd.zeros(2)
-        im_info=(img.shape[2], img.shape[1])
-        #print(cls_target.shape,box_target.shape,box_mask.shape)
+        im_info=(w, h)
         # print("--------")
-        # print(anchor)
+        # print(im_info)
+        # import cv2;
+        # cv2.imshow("img_",src.asnumpy())
+        # cv2.waitKey(0)
         return (img_, bbox_, im_info)
 
 
@@ -190,5 +192,5 @@ class FasterRCNNDefaultValTransform(object):
         img_[:,:img.shape[1],:img.shape[2]]=img
         img_ = img_.astype(img.dtype)
         im_info = mx.nd.zeros(2)
-        im_info = (img.shape[2], img.shape[1])
+        im_info = (w,h)
         return (img_, bbox_, mx.nd.array([im_scale]), im_info)

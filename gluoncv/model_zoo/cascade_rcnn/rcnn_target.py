@@ -72,7 +72,6 @@ class RCNNTargetSampler(gluon.HybridBlock):
             new_matches = []
             for i in range(self._num_image):
                 roi = F.squeeze(F.slice_axis(rois, axis=0, begin=i, end=i+1), axis=0)
-                
                 #score = F.squeeze(F.slice_axis(scores, axis=0, begin=i, end=i+1), axis=0)
                 
                 gt_box = F.squeeze(F.slice_axis(gt_boxes, axis=0, begin=i, end=i+1), axis=0)

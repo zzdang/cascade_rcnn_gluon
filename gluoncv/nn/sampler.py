@@ -325,8 +325,8 @@ class ClipRPNBoxOp(mx.operator.CustomOp):
         #with autograd.pause():
         rpn_box = in_data[0]
         index = mx.nd.ones((1,1))
-        for i in range(len(rpn_box[0,:,0])):
-            if  rpn_box[0,i,0] == -1:
+        for i in range(len(rpn_box[:,0])):
+            if  rpn_box[i,0] == -1:
                 break
         #     rpn_box_clip.append(rpn_box[0,i])
         # rpn_box_clip = F.stack(*rpn_box_clip, axis=0)

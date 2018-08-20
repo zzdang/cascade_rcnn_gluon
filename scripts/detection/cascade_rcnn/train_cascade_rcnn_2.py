@@ -379,15 +379,9 @@ def train(net, train_data, val_data, eval_metric, ctx, args):
         btic = time.time()
         net.hybridize(active =False,static_alloc=True)
         base_lr = trainer.learning_rate
-        if not (epoch + 1) % args.val_interval:
-            # consider reduce the frequency of validation to save time
-            map_name, mean_ap = validate(net, val_data, ctx, eval_metric)
-            val_msg = '\n'.join(['{}={}'.format(k, v) for k, v in zip(map_name, mean_ap)])
-            logger.info('[Epoch {}] Validation: \n{}'.format(epoch, val_msg))
-            current_map = float(mean_ap[-1])
         #train start
         print('training  start-----------------------')
-        #print(net.collect_params())
+        print(net.collect_params())
         for i, batch in enumerate(train_data):
             if epoch == 0 and i <= lr_warmup:
                 new_lr = base_lr * get_lr_at_iter(i / lr_warmup)
