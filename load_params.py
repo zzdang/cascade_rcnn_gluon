@@ -36,8 +36,8 @@ def update_key(k):
 		return k
 
 
-filename ='/media/han/6f586f18-792a-40fd-ada6-59702fb5dabc/model/VGG_16_fc2048_prune-0000.params'
-filename1 ='/media/han/6f586f18-792a-40fd-ada6-59702fb5dabc/model/VGG_16_fc2048_prune_cascade.params'
+filename ='./models/VGG_16_fc2048_prune.params'
+filename1 ='./models/VGG_16_fc2048_prune_cascade.params'
 loaded = [(k[4:] if k.startswith('arg:') or k.startswith('aux:') else k, v) \
           for k, v in mx.nd.load(filename).items()]
 # arg_dict = { k: v for k, v in loaded}

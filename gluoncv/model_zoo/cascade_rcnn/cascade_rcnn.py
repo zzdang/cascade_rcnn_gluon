@@ -680,6 +680,6 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
                            scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(7, 7), stride=16,
-                           rpn_channel=512, rpn_train_pre_nms=3000, rpn_train_post_nms=500,num_sample=-1,
+                           rpn_channel=512, rpn_train_pre_nms=12000, rpn_train_post_nms=2000,num_sample=128,
                            train_patterns=train_patterns,
                            pretrained=pretrained, **kwargs)

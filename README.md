@@ -56,6 +56,10 @@ VGG-RPN-cascade(pruned) | 2 | 2    |5e-4|  20  |  14  | 75
 	cp /PATH/TO/DOWNLOAD/MODEL $CASCADE_ROOT/models/
 	```
 
+	# convert the vgg16_pruned pretained params to vgg 16_pruned_cascade params
+	python load_params.py
+	```
+
 3. training for Cascade-RCNN
 
     ```Shell
