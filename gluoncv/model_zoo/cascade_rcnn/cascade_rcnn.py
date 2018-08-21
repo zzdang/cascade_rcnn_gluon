@@ -6,7 +6,7 @@ import mxnet as mx
 from mxnet import autograd
 from mxnet.gluon import nn
 from .rcnn_target import RCNNTargetSampler, RCNNTargetGenerator
-from ..rcnn import RCNN2
+from ..rcnn import RCNN3
 from ..rpn import RPN
 from ...nn.coder import NormalizedBoxCenterDecoder, MultiPerClassDecoder
 from easydict import EasyDict as edict
@@ -21,7 +21,7 @@ __all__ = ['CascadeRCNN', 'get_cascade_rcnn',
            'cascade_rcnn_vgg16_pruned_voc']
 
 
-class CascadeRCNN(RCNN2):
+class CascadeRCNN(RCNN3):
     r"""Faster RCNN network.
 
     Parameters
@@ -75,16 +75,25 @@ class CascadeRCNN(RCNN2):
         to be sampled.
 
     """
-    def __init__(self, features, top_features, top_features_2nd,top_features_3rd,
-                 scales, ratios, classes, roi_mode, roi_size,
-                 stride=16, rpn_channel=1024, rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
-                 rpn_test_pre_nms=6000, rpn_test_post_nms=300,
-                 num_sample=128, pos_iou_thresh=0.5, neg_iou_thresh_high=0.5,
-                 neg_iou_thresh_low=0.0, pos_ratio=0.25, **kwargs):
+    def __init__(self, features, top_features, classes,
+                 short=600, max_size=1000, train_patterns=None,
+                 nms_thresh=0.3, nms_topk=400, post_nms=100,
+                 roi_mode='align', roi_size=(14, 14), stride=16, clip=None,
+                 rpn_channel=1024, base_size=16, scales=(0.5, 1, 2),
+                 ratios=(8, 16, 32), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+                 rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+                 rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+                 num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+                 additional_output=False, **kwargs):
         super(CascadeRCNN, self).__init__(
-            features, top_features,top_features_2nd,top_features_3rd, classes, roi_mode, roi_size, **kwargs)
-        self.stride = stride
+            features=features, top_features=top_features, classes=classes,
+            short=short, max_size=max_size, train_patterns=train_patterns,
+            nms_thresh=nms_thresh, nms_topk=nms_topk, post_nms=post_nms,
+            roi_mode=roi_mode, roi_size=roi_size, stride=stride, clip=clip, **kwargs)
         self._max_batch = 1  # currently only support batch size = 1
+        self._num_sample = num_sample
+        self._rpn_test_post_nms = rpn_test_post_nms
+        self.stride = stride
         self._max_roi = 100000  # maximum allowed ROIs
         stds_2nd = (.05, .05, .1, .1)
         stds_3rd = (.033, .033, .067, .067)
@@ -97,15 +106,19 @@ class CascadeRCNN(RCNN2):
                                 neg_iou_thresh=0.3, pos_ratio=0.5,
                                 stds=(1., 1., 1., 1.))])
         with self.name_scope():
-            self.rpn = RPN(rpn_channel, stride, scales=scales, ratios=ratios,
-                           train_pre_nms=rpn_train_pre_nms, train_post_nms=rpn_train_post_nms,
-                           test_pre_nms=rpn_test_pre_nms, test_post_nms=rpn_test_post_nms)
-            self.sampler = RCNNTargetSampler(num_sample, pos_iou_thresh, neg_iou_thresh_high,
-                                             neg_iou_thresh_low, pos_ratio,1)
+            self.rpn = RPN(
+                channels=rpn_channel, stride=stride, base_size=base_size,
+                scales=scales, ratios=ratios, alloc_size=alloc_size,
+                clip=clip, nms_thresh=rpn_nms_thresh, train_pre_nms=rpn_train_pre_nms,
+                train_post_nms=rpn_train_post_nms, test_pre_nms=rpn_test_pre_nms,
+                test_post_nms=rpn_test_post_nms, min_size=rpn_min_size)
+
+            self.sampler = RCNNTargetSampler(num_sample, 0.5, 0.5,
+                                             0.0, pos_ratio,1)
             self.sampler_2nd = RCNNTargetSampler(-1, 0.6, 0.6,
-                                             neg_iou_thresh_low, pos_ratio,0.95)
+                                             0.0, pos_ratio,0.95)
             self.sampler_3rd = RCNNTargetSampler(-1, 0.7, 0.7,
-                                             neg_iou_thresh_low, pos_ratio,0.95)
+                                             0.0, pos_ratio,0.95)
             self.box_decoder_2nd = NormalizedBoxCenterDecoder(stds=(.05, .05, .1, .1))
             self.box_decoder_3rd = NormalizedBoxCenterDecoder(stds=(.033, .033, .067, .067))
 
@@ -147,23 +160,11 @@ class CascadeRCNN(RCNN2):
         if self._roi_mode == 'pool':
             pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
         elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
+            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride,sample_ratio=2)
         else:
             raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
         return pooled_feat
 
-    def ROIExtraction(self, F, feature, bbox):
-
-        roi = self.add_batchid(F, bbox)
-
-        # ROI features
-        if self._roi_mode == 'pool':
-            pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
-        elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
-        else:
-            raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
-        return pooled_feat
 
     def add_batchid(self, F, bbox):
         with autograd.pause():
@@ -178,6 +179,7 @@ class CascadeRCNN(RCNN2):
             roi = box_decoder(encoded_bbox, self.box_to_center(source_bbox))
             roi = roi.reshape((1,-1, 4))
             return roi
+
 
     def cascade_rcnn(self, F, feature, roi, sampler, gt_box):
         """Forward Faster-RCNN network.
@@ -241,148 +243,101 @@ class CascadeRCNN(RCNN2):
             _, rpn_box, raw_rpn_score, raw_rpn_box, anchors = self.rpn(feat, F.zeros_like(x))
             # sample 128 roi
             assert gt_box is not None
-            rpn_box, samples, matches = self.sampler(rpn_box, gt_box)
+            
         else:
             _, rpn_box = self.rpn(feat, F.zeros_like(x))
-        # ROI features (ROI pooling or ROI Align)
-        pooled_feat = self.ROIExtraction(F=F, feature=feat, bbox=rpn_box)
-        top_feat = self.top_features(pooled_feat)
-        cls_pred = self.class_predictor(top_feat)
-        box_pred = self.box_predictor(top_feat).reshape((-1, 1, 4)).transpose((1, 0, 2))
 
-
-        # casscade rcnn 
-        # 2nd decode rcnn box
-        roi_2nd = self.decode_bbox(source_bbox=rpn_box, encoded_bbox=box_pred, stds=(.05, .05, .1, .1))
+        
         if autograd.is_training():
-            roi_2nd, samples_2nd, matches_2nd = self.sampler_2nd(roi_2nd, gt_box)
-        pooled_feat_2nd = self.ROIExtraction(F=F, feature=feat, bbox=roi_2nd)
-        top_feat_2nd = self.top_features_2nd(pooled_feat_2nd)
-        cls_pred_2nd = self.class_predictor_2nd(top_feat_2nd)
-        box_pred_2nd = self.box_predictor_2nd(top_feat_2nd).reshape((-1, 1, 4)).transpose((1, 0, 2))
+            #rpn_box, samples, matches = self.sampler(rpn_box, gt_box)
+            cls_pred, box_pred, sample_data_1st = self.cascade_rcnn(F=F, feature=feat, roi=rpn_box, sampler=self.sampler, gt_box=gt_box)            
+            
+            roi_2nd = self.decode_bbox(source_bbox=sample_data_1st.roi, encoded_bbox=box_pred, stds=(.05, .05, .1, .1))
+            cls_pred_2nd, box_pred_2nd, sample_data_2nd = self.cascade_rcnn(F=F, feature=feat, roi=roi_2nd, sampler=self.sampler_2nd, gt_box=gt_box)
 
+            roi_3rd = self.decode_bbox(source_bbox=sample_data_2nd.roi, encoded_bbox=box_pred_2nd, stds=(.033, .033, .067, .067))
+            cls_pred_3rd, box_pred_3rd, sample_data_3rd = self.cascade_rcnn(F=F, feature=feat, roi=roi_3rd, sampler=self.sampler_3rd, gt_box=gt_box)
 
-        # decode rcnn box
-        roi_3rd = self.decode_bbox(source_bbox=roi_2nd, encoded_bbox=box_pred_2nd, stds=(.033, .033, .067, .067))
-        if autograd.is_training():
-            roi_3rd, samples_3rd, matches_3rd = self.sampler_3rd(roi_3rd, gt_box)
-        pooled_feat_3rd = self.ROIExtraction(F=F, feature=feat, bbox=roi_3rd)
-        top_feat_3rd = self.top_features_3rd(pooled_feat_3rd)
-        cls_pred_3rd = self.class_predictor_3rd(top_feat_3rd)
-        box_pred_3rd = self.box_predictor_3rd(top_feat_3rd).reshape((-1, 1, 4)).transpose((1, 0, 2))
-
- 
-        # no need to convert bounding boxes in training, just return
-        if autograd.is_training():
             box_pred = box_pred.transpose((1, 0, 2))
             box_pred_2nd = box_pred_2nd.transpose((1, 0, 2))
             box_pred_3rd = box_pred_3rd.transpose((1, 0, 2))
 
+            # no need to convert bounding boxes in training, just return
+            # translate bboxes
+
             rpn_result  = raw_rpn_score, raw_rpn_box, anchors
-            cascade_rcnn_result = [  [cls_pred_3rd, box_pred_3rd, roi_3rd, samples_3rd, matches_3rd ], 
-                                     [cls_pred_2nd, box_pred_2nd, roi_2nd, samples_2nd, matches_2nd],
-                                     [cls_pred, box_pred, rpn_box, samples, matches  ] ]
+            cascade_rcnn_result = [  [cls_pred_3rd, box_pred_3rd, sample_data_3rd.roi, sample_data_3rd.samples, sample_data_3rd.matches ], 
+                                     [cls_pred_2nd, box_pred_2nd, sample_data_2nd.roi, sample_data_2nd.samples, sample_data_2nd.matches],
+                                     [cls_pred, box_pred, sample_data_1st.roi, sample_data_1st.samples, sample_data_1st.matches  ] ]
  
             return  rpn_result, cascade_rcnn_result         
-        
-        bboxes = self.box_decoder_3rd(box_pred_3rd, self.box_to_center(roi_3rd))
+        else:
+            cls_pred, box_pred, *_ = self.cascade_rcnn(F=F, feature=feat, roi=rpn_box, sampler=self.sampler_3rd, gt_box=gt_box)
+            roi_2nd = self.decode_bbox(source_bbox=rpn_box, encoded_bbox=box_pred, stds=(.05, .05, .1, .1))
+            cls_pred_2nd, box_pred_2nd, *_ = self.cascade_rcnn(F=F, feature=feat, roi=roi_2nd, sampler=self.sampler_3rd, gt_box=gt_box)
+            roi_3rd = self.decode_bbox(source_bbox=roi_2nd, encoded_bbox=box_pred_2nd, stds=(.033, .033, .067, .067))
+            cls_pred_3rd, box_pred_3rd, *_ = self.cascade_rcnn(F=F, feature=feat, roi=roi_3rd, sampler=self.sampler_3rd, gt_box=gt_box)        
 
-        bboxes = bboxes.split(
-            axis=0, num_outputs=1, squeeze_axis=True)
+            bboxes = self.box_decoder_3rd(box_pred_3rd, self.box_to_center(roi_3rd))
 
-        cls_prob_3rd = F.softmax(cls_pred_3rd, axis=-1)
-        cls_prob_2nd = F.softmax(cls_pred_2nd, axis=-1)
-        cls_prob_1st = F.softmax(cls_pred, axis=-1)
-        cls_prob_3rd_avg = F.ElementWiseSum(cls_prob_3rd,cls_prob_2nd,cls_prob_1st)
-        cls_ids, scores = self.cls_decoder(cls_prob_3rd_avg )
-        results = []
-        for i in range(self.num_class):
-            cls_id = cls_ids.slice_axis(axis=-1, begin=i, end=i+1)
-            score = scores.slice_axis(axis=-1, begin=i, end=i+1)
-            # per class results
-            per_result = F.concat(*[cls_id, score, bboxes], dim=-1)
+            bboxes = bboxes.split(
+                axis=0, num_outputs=1, squeeze_axis=True)
 
-            results.append(per_result)
-        result = F.concat(*results, dim=0).expand_dims(0)
-        if self.nms_thresh > 0 and self.nms_thresh < 1:
-            result = F.contrib.box_nms(
-                result, overlap_thresh=self.nms_thresh, topk=self.nms_topk,
-                id_index=0, score_index=1, coord_start=2)
-            if self.nms_topk > 0:
-                result = result.slice_axis(axis=1, begin=0, end=100).squeeze(axis=0)
-        ids = F.slice_axis(result, axis=-1, begin=0, end=1)
-        scores = F.slice_axis(result, axis=-1, begin=1, end=2)
-        bboxes = F.slice_axis(result, axis=-1, begin=2, end=6)
+            cls_prob_3rd = F.softmax(cls_pred_3rd, axis=-1)
+            cls_prob_2nd = F.softmax(cls_pred_2nd, axis=-1)
+            cls_prob_1st = F.softmax(cls_pred, axis=-1)
+            cls_prob_3rd_avg = F.ElementWiseSum(cls_prob_3rd,cls_prob_2nd,cls_prob_1st)
+            cls_ids, scores = self.cls_decoder(cls_prob_3rd_avg )
+            results = []
+            for i in range(self.num_class):
+                cls_id = cls_ids.slice_axis(axis=-1, begin=i, end=i+1)
+                score = scores.slice_axis(axis=-1, begin=i, end=i+1)
+                # per class results
+                per_result = F.concat(*[cls_id, score, bboxes], dim=-1)
 
-        
-        return ids, scores, bboxes
+                results.append(per_result)
+            result = F.concat(*results, dim=0).expand_dims(0)
+            if self.nms_thresh > 0 and self.nms_thresh < 1:
+                result = F.contrib.box_nms(
+                    result, overlap_thresh=self.nms_thresh, topk=self.nms_topk,
+                    id_index=0, score_index=1, coord_start=2)
+                if self.nms_topk > 0:
+                    result = result.slice_axis(axis=1, begin=0, end=100).squeeze(axis=0)
+            ids = F.slice_axis(result, axis=-1, begin=0, end=1)
+            scores = F.slice_axis(result, axis=-1, begin=1, end=2)
+            bboxes = F.slice_axis(result, axis=-1, begin=2, end=6)
+
+            
+            return ids, scores, bboxes
 
 
 
 
-def get_cascade_rcnn(name, features, top_features,top_features_2nd,top_features_3rd, 
-                    scales, ratios, classes,
-                    roi_mode, roi_size, dataset, stride=16,
-                    rpn_channel=1024, pretrained=False, ctx=mx.cpu(),
+def get_cascade_rcnn(name, dataset, pretrained=False, ctx=mx.cpu(),
                     root=os.path.join('~', '.mxnet', 'models'), **kwargs):
     r"""Utility function to return faster rcnn networks.
-
     Parameters
     ----------
     name : str
         Model name.
-    features : gluon.HybridBlock
-        Base feature extractor before feature pooling layer.
-    top_features : gluon.HybridBlock
-        Tail feature extractor after feature pooling layer.
-    scales : iterable of float
-        The areas of anchor boxes.
-        We use the following form to compute the shapes of anchors:
-
-        .. math::
-
-            width_{anchor} = size_{base} \times scale \times \sqrt{ 1 / ratio}
-            height_{anchor} = size_{base} \times scale \times \sqrt{ratio}
-
-    ratios : iterable of float
-        The aspect ratios of anchor boxes. We expect it to be a list or tuple.
-    classes : iterable of str
-        Names of categories, its length is ``num_class``.
-    roi_mode : str
-        ROI pooling mode. Currently support 'pool' and 'align'.
-    roi_size : tuple of int, length 2
-        (height, width) of the ROI region.
     dataset : str
         The name of dataset.
-    stride : int, default is 16
-        Feature map stride with respect to original image.
-        This is usually the ratio between original image size and feature map size.
-    rpn_channel : int, default is 1024
-        Channel number used in RPN convolutional layers.
     pretrained : bool, optional, default is False
         Load pretrained weights.
     ctx : mxnet.Context
         Context such as mx.cpu(), mx.gpu(0).
     root : str
         Model weights storing path.
-
     Returns
     -------
     mxnet.gluon.HybridBlock
         The Faster-RCNN network.
-
     """
-
-
-    net = CascadeRCNN(features, top_features, top_features_2nd,top_features_3rd,
-                     scales, ratios, classes, roi_mode, roi_size,
-                     stride=stride, rpn_channel=rpn_channel, **kwargs)
+    net = CascadeRCNN(**kwargs)
     if pretrained:
         from ..model_store import get_model_file
         full_name = '_'.join(('cascade_rcnn', name, dataset))
- 
-
-        net.load_params(get_model_file(full_name, root=root), ctx=ctx)
+        net.load_parameters(get_model_file(full_name, root=root), ctx=ctx)
     return net
 
 def cascade_rcnn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwargs):
@@ -670,16 +625,20 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
     classes = VOCDetection.CLASSES
     pretrained_base = False if pretrained else pretrained_base
     base_network = vgg16_pruned(pretrained=pretrained_base)
-    print(base_network)
     features = base_network.features[:30]
     top_features =base_network.features[31:35]
-    top_features_2nd =base_network.features[35:39]
-    top_features_3rd =base_network.features[39:43]
+    # top_features_2nd =base_network.features[35:39]
+    # top_features_3rd =base_network.features[39:43]
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
-    return get_cascade_rcnn('vgg16_pruned', features, top_features,top_features_2nd,top_features_3rd,
-                           scales=( 8,16, 32),
-                           ratios=(0.5, 1, 2), classes=classes, dataset='voc',
-                           roi_mode='align', roi_size=(7, 7), stride=16,
-                           rpn_channel=512, rpn_train_pre_nms=12000, rpn_train_post_nms=2000,num_sample=128,
-                           train_patterns=train_patterns,
-                           pretrained=pretrained, **kwargs)
+    return get_cascade_rcnn(
+        name='vgg16_pruned', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, classes=classes,
+        short=600, max_size=1000, train_patterns=train_patterns,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
+        rpn_channel=1024, base_size=16, scales=(8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)

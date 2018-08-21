@@ -1,7 +1,6 @@
 """Transforms for RCNN series."""
 from __future__ import absolute_import
 import copy
-import numpy as np
 import mxnet as mx
 from .. import bbox as tbbox
 from .. import image as timage
@@ -39,9 +38,7 @@ def load_test(filenames, short=600, max_size=1000, mean=(0.485, 0.456, 0.406),
     origs = []
     for f in filenames:
         img = mx.image.imread(f)
-        img = mx.image.resize_short(img, short)
-        if isinstance(max_size, int) and max(img.shape) > max_size:
-            img = timage.resize_long(img, max_size)
+        img = timage.resize_short_within(img, short, max_size)
         orig_img = img.asnumpy().astype('uint8')
         img = mx.nd.image.to_tensor(img)
         img = mx.nd.image.normalize(img, mean=mean, std=std)
@@ -118,7 +115,7 @@ class FasterRCNNDefaultTrainTransform(object):
         """Apply transform to training image/label."""
         # resize shorter side but keep in max_size
         h, w, _ = src.shape
-        img = timage.resize_short_within(src, self._short, self._max_size)
+        img = timage.resize_short_within(src, self._short, self._max_size, interp=1)
         bbox = tbbox.resize(label, (w, h), (img.shape[1], img.shape[0]))
 
         # random horizontal flip
@@ -137,10 +134,10 @@ class FasterRCNNDefaultTrainTransform(object):
         # feat_h, feat_w = (img.shape[1] // self._stride, img.shape[2] // self._stride)
         oshape = self._feat_sym.infer_shape(data=(1, 3, img.shape[1], img.shape[2]))[1][0]
         anchor = self._anchors[:, :, :oshape[2], :oshape[3], :].reshape((-1, 4))
-        gt_bboxes = mx.nd.array(bbox[np.newaxis, :, :4])
+        gt_bboxes = mx.nd.array(bbox[:, :4])
         cls_target, box_target, box_mask = self._target_generator(
             gt_bboxes, anchor, img.shape[2], img.shape[1])
-        return img, bbox.astype(img.dtype), cls_target[0], box_target[0], box_mask[0]
+        return img, bbox.astype(img.dtype), cls_target, box_target, box_mask
 
 
 class FasterRCNNDefaultValTransform(object):
@@ -167,7 +164,7 @@ class FasterRCNNDefaultValTransform(object):
         """Apply transform to validation image/label."""
         # resize shorter side but keep in max_size
         h, w, _ = src.shape
-        img = timage.resize_short_within(src, self._short, self._max_size)
+        img = timage.resize_short_within(src, self._short, self._max_size, interp=1)
         # no scaling ground-truth, return image scaling ratio instead
         bbox = tbbox.resize(label, (w, h), (img.shape[1], img.shape[0]))
         im_scale = h / float(img.shape[0])

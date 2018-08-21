@@ -147,23 +147,11 @@ class CascadeRCNN(RCNN2):
         if self._roi_mode == 'pool':
             pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
         elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
+            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride,sample_ratio=2)
         else:
             raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
         return pooled_feat
 
-    def ROIExtraction(self, F, feature, bbox):
-
-        roi = self.add_batchid(F, bbox)
-
-        # ROI features
-        if self._roi_mode == 'pool':
-            pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
-        elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
-        else:
-            raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
-        return pooled_feat
 
     def add_batchid(self, F, bbox):
         with autograd.pause():
@@ -680,6 +668,6 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
                            scales=( 8,16, 32),
                            ratios=(0.5, 1, 2), classes=classes, dataset='voc',
                            roi_mode='align', roi_size=(7, 7), stride=16,
-                           rpn_channel=512, rpn_train_pre_nms=12000, rpn_train_post_nms=500,
+                           rpn_channel=512, rpn_train_pre_nms=12000, rpn_train_post_nms=500,num_sample=128,
                            train_patterns=train_patterns,
                            pretrained=pretrained, **kwargs)

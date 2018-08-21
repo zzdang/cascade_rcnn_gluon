@@ -65,7 +65,7 @@ class RPNAnchorGenerator(gluon.HybridBlock):
                 w = (ws * s - 1) * 0.5
                 h = (np.round(ws * r) * s - 1) * 0.5
                 base_sizes.append([px - w, py - h, px + w, py + h])
-                print(w*2,h*2)
+
         base_sizes = np.array(base_sizes)  # (N, 4)
 
         # propagete to all locations by shifting offsets

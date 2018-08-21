@@ -122,3 +122,88 @@ class BBoxArea(gluon.HybridBlock):
         width = F.where(width > 0, width, F.zeros_like(width))
         height = F.where(height > 0, height, F.zeros_like(height))
         return width * height
+
+class BBoxBatchIOU(gluon.HybridBlock):
+    """Batch Bounding Box IOU.
+    Parameters
+    ----------
+    axis : int
+        On which axis is the lenght-4 bounding box dimension.
+    fmt : str
+        BBox encoding format, can be 'corner' or 'center'.
+        'corner': (xmin, ymin, xmax, ymax)
+        'center': (center_x, center_y, width, height)
+    offset : float, default is 0
+        Offset is used if +1 is desired for computing width and height, otherwise use 0.
+    eps : float, default is 1e-15
+        Very small number to avoid division by 0.
+    """
+    def __init__(self, axis=-1, fmt='corner', offset=0, eps=1e-15, **kwargs):
+        super(BBoxBatchIOU, self).__init__(**kwargs)
+        self._offset = offset
+        self._eps = eps
+        if fmt.lower() == 'center':
+            self._pre = BBoxCenterToCorner(split=True)
+        elif fmt.lower() == 'corner':
+            self._pre = BBoxSplit(axis=axis, squeeze_axis=True)
+        else:
+            raise ValueError("Unsupported format: {}. Use 'corner' or 'center'.".format(fmt))
+
+    def hybrid_forward(self, F, a, b):
+        """Compute IOU for each batch
+        Parameters
+        ----------
+        a : mxnet.nd.NDArray or mxnet.sym.Symbol
+            (B, N, 4) first input.
+        b : mxnet.nd.NDArray or mxnet.sym.Symbol
+            (B, M, 4) second input.
+        Returns
+        -------
+        mxnet.nd.NDArray or mxnet.sym.Symbol
+            (B, N, M) array of IOUs.
+        """
+        al, at, ar, ab = self._pre(a)
+        bl, bt, br, bb = self._pre(b)
+
+        # (B, N, M)
+        left = F.broadcast_maximum(al.expand_dims(-1), bl.expand_dims(-2))
+        right = F.broadcast_minimum(ar.expand_dims(-1), br.expand_dims(-2))
+        top = F.broadcast_maximum(at.expand_dims(-1), bt.expand_dims(-2))
+        bot = F.broadcast_minimum(ab.expand_dims(-1), bb.expand_dims(-2))
+
+        # clip with (0, float16.max)
+        iw = F.clip(right - left + self._offset, a_min=0, a_max=6.55040e+04)
+        ih = F.clip(bot - top + self._offset, a_min=0, a_max=6.55040e+04)
+        i = iw * ih
+
+        # areas
+        area_a = ((ar - al + self._offset) * (ab - at + self._offset)).expand_dims(-1)
+        area_b = ((br - bl + self._offset) * (bb - bt + self._offset)).expand_dims(-2)
+        union = F.broadcast_add(area_a, area_b) - i
+
+        return i / (union + self._eps)
+
+
+class BBoxClipToImage(gluon.HybridBlock):
+    """Clip bounding box coordinates to image boundaries.
+    If multiple images are supplied and padded, must have additional inputs
+    of accurate image shape.
+    """
+    def __init__(self, **kwargs):
+        super(BBoxClipToImage, self).__init__(**kwargs)
+
+    def hybrid_forward(self, F, x, img):
+        """If images are padded, must have additional inputs for clipping
+        Parameters
+        ----------
+        x: (B, N, 4) Bounding box coordinates.
+        img: (B, C, H, W) Image tensor.
+        Returns
+        -------
+        (B, N, 4) Bounding box coordinates.
+        """
+        x = F.maximum(x, 0.0)
+        # window [B, 2] -> reverse hw -> tile [B, 4] -> [B, 1, 4], boxes [B, N, 4]
+        window = F.shape_array(img).slice_axis(axis=0, begin=2, end=None).expand_dims(0)
+        m = F.tile(F.reverse(window, axis=1), reps=(2,)).reshape((0, -4, 1, -1))
+        return F.broadcast_minimum(x, F.cast(m, dtype='float32'))

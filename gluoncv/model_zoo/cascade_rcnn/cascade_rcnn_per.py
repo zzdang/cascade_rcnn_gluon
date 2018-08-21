@@ -147,23 +147,11 @@ class CascadeRCNN(RCNN3):
         if self._roi_mode == 'pool':
             pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
         elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
+            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride,sample_ratio=2)
         else:
             raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
         return pooled_feat
 
-    def ROIExtraction(self, F, feature, bbox):
-
-        roi = self.add_batchid(F, bbox)
-
-        # ROI features
-        if self._roi_mode == 'pool':
-            pooled_feat = F.ROIPooling(feature, roi, self._roi_size, 1. / self.stride)
-        elif self._roi_mode == 'align':
-            pooled_feat = F.contrib.ROIAlign(feature, roi, self._roi_size, 1. / self.stride)
-        else:
-            raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
-        return pooled_feat
 
     def add_batchid(self, F, bbox):
         with autograd.pause():
