@@ -10,7 +10,6 @@ from ...nn.coder import NormalizedBoxCenterDecoder, MultiPerClassDecoder
 
 class RCNN2(gluon.HybridBlock):
     """RCNN network.
-
     Parameters
     ----------
     features : gluon.HybridBlock
@@ -34,7 +33,6 @@ class RCNN2(gluon.HybridBlock):
         number if expecting more objects. You can use -1 to return all detections.
     train_patterns : str
         Matching pattern for trainable parameters.
-
     Attributes
     ----------
     num_class : int
@@ -48,22 +46,27 @@ class RCNN2(gluon.HybridBlock):
          result is used in NMS.
     train_patterns : str
         Matching pattern for trainable parameters.
-
     """
-    def __init__(self, features, top_features,top_features_2nd,top_features_3rd, classes, roi_mode, roi_size,
-                 nms_thresh=0.3, nms_topk=400, post_nms=100, train_patterns=None, **kwargs):
+    def __init__(self, features, top_features, classes,
+                 short, max_size, train_patterns,
+                 nms_thresh, nms_topk, post_nms,
+                 roi_mode, roi_size, stride, clip, **kwargs):
         super(RCNN2, self).__init__(**kwargs)
         self.classes = classes
         self.num_class = len(classes)
+        self.short = short
+        self.max_size = max_size
+        self.train_patterns = train_patterns
+        self.nms_thresh = nms_thresh
+        self.nms_topk = nms_topk
+        self.post_nms = post_nms
+
         assert self.num_class > 0, "Invalid number of class : {}".format(self.num_class)
         assert roi_mode.lower() in ['align', 'pool'], "Invalid roi_mode: {}".format(roi_mode)
         self._roi_mode = roi_mode.lower()
         assert len(roi_size) == 2, "Require (h, w) as roi_size, given {}".format(roi_size)
         self._roi_size = roi_size
-        self.nms_thresh = nms_thresh
-        self.nms_topk = nms_topk
-        self.post_nms = post_nms
-        self.train_patterns = train_patterns
+        self._stride = stride
 
         with self.name_scope():
             self.features = features
@@ -75,14 +78,14 @@ class RCNN2(gluon.HybridBlock):
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
             self.cls_decoder = MultiPerClassDecoder(num_class=self.num_class+1)
             self.box_to_center = BBoxCornerToCenter()
-            self.box_decoder = NormalizedBoxCenterDecoder()
+            self.box_decoder = NormalizedBoxCenterDecoder(clip=clip)
             # cascade 2nd and 3rd rcnn
-            self.top_features_2nd = top_features_2nd
+            self.top_features_2nd = top_features
             self.class_predictor_2nd = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
             self.box_predictor_2nd = nn.Dense(
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
-            self.top_features_3rd = top_features_3rd
+            self.top_features_3rd = top_features
             self.class_predictor_3rd = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
             self.box_predictor_3rd = nn.Dense(
@@ -91,22 +94,18 @@ class RCNN2(gluon.HybridBlock):
 
     def collect_train_params(self, select=None):
         """Collect trainable params.
-
         This function serves as a help utility function to return only
         trainable parameters if predefined by experienced developer/researcher.
         For example, if cross-device BatchNorm is not enabled, we will definitely
         want to fix BatchNorm statistics to avoid scaling problem because RCNN training
         batch size is usually very small.
-
         Parameters
         ----------
         select : select : str
             Regular expressions for parameter match pattern
-
         Returns
         -------
         The selected :py:class:`mxnet.gluon.ParameterDict`
-
         """
         if select is None:
             return self.collect_params(self.train_patterns)
@@ -114,11 +113,9 @@ class RCNN2(gluon.HybridBlock):
 
     def set_nms(self, nms_thresh=0.3, nms_topk=400, post_nms=100):
         """Set NMS parameters to the network.
-
         .. Note::
             If you are using hybrid mode, make sure you re-hybridize after calling
             ``set_nms``.
-
         Parameters
         ----------
         nms_thresh : float, default is 0.3.
@@ -130,11 +127,9 @@ class RCNN2(gluon.HybridBlock):
             Only return top `post_nms` detection results, the rest is discarded. The number is
             based on COCO dataset which has maximum 100 objects per image. You can adjust this
             number if expecting more objects. You can use -1 to return all detections.
-
         Returns
         -------
         None
-
         """
         self._clear_cached_op()
         self.nms_thresh = nms_thresh

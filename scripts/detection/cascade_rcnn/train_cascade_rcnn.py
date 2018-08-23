@@ -238,7 +238,7 @@ def validate(net, val_data, ctx, eval_metric):
             det_ids.append(ids.expand_dims(0))
             det_scores.append(scores.expand_dims(0))
             # clip to image size
-            det_bboxes.append(mx.nd.Custom(bboxes, x, op_type='bbox_clip_to_image').expand_dims(0))
+            det_bboxes.append(mx.nd.Custom(bboxes, x, op_type='bbox_clip_to_image'))
             # rescale to original resolution
             im_scale = im_scale.reshape((-1)).asscalar()
             det_bboxes[-1] *= im_scale

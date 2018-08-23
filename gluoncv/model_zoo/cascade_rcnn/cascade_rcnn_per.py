@@ -75,16 +75,25 @@ class CascadeRCNN(RCNN3):
         to be sampled.
 
     """
-    def __init__(self, features, top_features, 
-                 scales, ratios, classes, roi_mode, roi_size,
-                 stride=16, rpn_channel=1024, rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
-                 rpn_test_pre_nms=6000, rpn_test_post_nms=300,
-                 num_sample=128, pos_iou_thresh=0.5, neg_iou_thresh_high=0.5,
-                 neg_iou_thresh_low=0.0, pos_ratio=0.25, **kwargs):
+    def __init__(self, features, top_features, classes,
+                 short=600, max_size=1000, train_patterns=None,
+                 nms_thresh=0.3, nms_topk=400, post_nms=100,
+                 roi_mode='align', roi_size=(14, 14), stride=16, clip=None,
+                 rpn_channel=1024, base_size=16, scales=(0.5, 1, 2),
+                 ratios=(8, 16, 32), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+                 rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+                 rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+                 num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+                 additional_output=False, **kwargs):
         super(CascadeRCNN, self).__init__(
-            features, top_features,classes, roi_mode, roi_size, **kwargs)
-        self.stride = stride
+            features=features, top_features=top_features, classes=classes,
+            short=short, max_size=max_size, train_patterns=train_patterns,
+            nms_thresh=nms_thresh, nms_topk=nms_topk, post_nms=post_nms,
+            roi_mode=roi_mode, roi_size=roi_size, stride=stride, clip=clip, **kwargs)
         self._max_batch = 1  # currently only support batch size = 1
+        self._num_sample = num_sample
+        self._rpn_test_post_nms = rpn_test_post_nms
+        self.stride = stride
         self._max_roi = 100000  # maximum allowed ROIs
         stds_2nd = (.05, .05, .1, .1)
         stds_3rd = (.033, .033, .067, .067)
@@ -97,15 +106,19 @@ class CascadeRCNN(RCNN3):
                                 neg_iou_thresh=0.3, pos_ratio=0.5,
                                 stds=(1., 1., 1., 1.))])
         with self.name_scope():
-            self.rpn = RPN(rpn_channel, stride, scales=scales, ratios=ratios,
-                           train_pre_nms=rpn_train_pre_nms, train_post_nms=rpn_train_post_nms,
-                           test_pre_nms=rpn_test_pre_nms, test_post_nms=rpn_test_post_nms)
-            self.sampler = RCNNTargetSampler(num_sample, pos_iou_thresh, neg_iou_thresh_high,
-                                             neg_iou_thresh_low, pos_ratio,1)
+            self.rpn = RPN(
+                channels=rpn_channel, stride=stride, base_size=base_size,
+                scales=scales, ratios=ratios, alloc_size=alloc_size,
+                clip=clip, nms_thresh=rpn_nms_thresh, train_pre_nms=rpn_train_pre_nms,
+                train_post_nms=rpn_train_post_nms, test_pre_nms=rpn_test_pre_nms,
+                test_post_nms=rpn_test_post_nms, min_size=rpn_min_size)
+
+            self.sampler = RCNNTargetSampler(num_sample, 0.5, 0.5,
+                                             0.0, pos_ratio,1)
             self.sampler_2nd = RCNNTargetSampler(-1, 0.6, 0.6,
-                                             neg_iou_thresh_low, pos_ratio,0.95)
+                                             0.0, pos_ratio,0.95)
             self.sampler_3rd = RCNNTargetSampler(-1, 0.7, 0.7,
-                                             neg_iou_thresh_low, pos_ratio,0.95)
+                                             0.0, pos_ratio,0.95)
             self.box_decoder_2nd = NormalizedBoxCenterDecoder(stds=(.05, .05, .1, .1))
             self.box_decoder_3rd = NormalizedBoxCenterDecoder(stds=(.033, .033, .067, .067))
 
@@ -300,69 +313,31 @@ class CascadeRCNN(RCNN3):
 
 
 
-def get_cascade_rcnn(name, features, top_features,
-                    scales, ratios, classes,
-                    roi_mode, roi_size, dataset, stride=16,
-                    rpn_channel=1024, pretrained=False, ctx=mx.cpu(),
+def get_cascade_rcnn(name, dataset, pretrained=False, ctx=mx.cpu(),
                     root=os.path.join('~', '.mxnet', 'models'), **kwargs):
     r"""Utility function to return faster rcnn networks.
-
     Parameters
     ----------
     name : str
         Model name.
-    features : gluon.HybridBlock
-        Base feature extractor before feature pooling layer.
-    top_features : gluon.HybridBlock
-        Tail feature extractor after feature pooling layer.
-    scales : iterable of float
-        The areas of anchor boxes.
-        We use the following form to compute the shapes of anchors:
-
-        .. math::
-
-            width_{anchor} = size_{base} \times scale \times \sqrt{ 1 / ratio}
-            height_{anchor} = size_{base} \times scale \times \sqrt{ratio}
-
-    ratios : iterable of float
-        The aspect ratios of anchor boxes. We expect it to be a list or tuple.
-    classes : iterable of str
-        Names of categories, its length is ``num_class``.
-    roi_mode : str
-        ROI pooling mode. Currently support 'pool' and 'align'.
-    roi_size : tuple of int, length 2
-        (height, width) of the ROI region.
     dataset : str
         The name of dataset.
-    stride : int, default is 16
-        Feature map stride with respect to original image.
-        This is usually the ratio between original image size and feature map size.
-    rpn_channel : int, default is 1024
-        Channel number used in RPN convolutional layers.
     pretrained : bool, optional, default is False
         Load pretrained weights.
     ctx : mxnet.Context
         Context such as mx.cpu(), mx.gpu(0).
     root : str
         Model weights storing path.
-
     Returns
     -------
     mxnet.gluon.HybridBlock
         The Faster-RCNN network.
-
     """
-
-
-    net = CascadeRCNN(features, top_features, 
-                     scales, ratios, classes, roi_mode, roi_size,
-                     stride=stride, rpn_channel=rpn_channel, **kwargs)
+    net = CascadeRCNN(**kwargs)
     if pretrained:
         from ..model_store import get_model_file
         full_name = '_'.join(('cascade_rcnn', name, dataset))
- 
-
-        net.load_params(get_model_file(full_name, root=root), ctx=ctx)
+        net.load_parameters(get_model_file(full_name, root=root), ctx=ctx)
     return net
 
 def cascade_rcnn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwargs):
@@ -650,16 +625,20 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
     classes = VOCDetection.CLASSES
     pretrained_base = False if pretrained else pretrained_base
     base_network = vgg16_pruned(pretrained=pretrained_base)
-    print(base_network)
     features = base_network.features[:30]
     top_features =base_network.features[31:35]
     # top_features_2nd =base_network.features[35:39]
     # top_features_3rd =base_network.features[39:43]
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
-    return get_cascade_rcnn('vgg16_pruned', features, top_features,
-                           scales=( 8,16, 32),
-                           ratios=(0.5, 1, 2), classes=classes, dataset='voc',
-                           roi_mode='align', roi_size=(7, 7), stride=16,
-                           rpn_channel=512, rpn_train_pre_nms=12000, rpn_train_post_nms=500,
-                           train_patterns=train_patterns,
-                           pretrained=pretrained, **kwargs)
+    return get_cascade_rcnn(
+        name='vgg16_pruned', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, classes=classes,
+        short=600, max_size=1000, train_patterns=train_patterns,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
+        rpn_channel=512, base_size=16, scales=(8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=12000, rpn_train_post_nms=500,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)

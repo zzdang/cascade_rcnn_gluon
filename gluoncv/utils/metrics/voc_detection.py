@@ -9,7 +9,6 @@ from ..bbox import bbox_iou
 class VOCMApMetric(mx.metric.EvalMetric):
     """
     Calculate mean AP for object detection task
-
     Parameters:
     ---------
     iou_thresh : float
@@ -46,7 +45,6 @@ class VOCMApMetric(mx.metric.EvalMetric):
 
     def get(self):
         """Get the current evaluation result.
-
         Returns
         -------
         name : str
@@ -70,7 +68,6 @@ class VOCMApMetric(mx.metric.EvalMetric):
     def update(self, pred_bboxes, pred_labels, pred_scores,
                gt_bboxes, gt_labels, gt_difficults=None):
         """Update internal buffer with latest prediction and gt pairs.
-
         Parameters
         ----------
         pred_bboxes : mxnet.NDArray or numpy.ndarray
@@ -87,7 +84,6 @@ class VOCMApMetric(mx.metric.EvalMetric):
             Ground-truth bounding boxes labels with shape `B, M`.
         gt_difficults : mxnet.NDArray or numpy.ndarray, optional, default is None
             Ground-truth bounding boxes difficulty labels with shape `B, M`.
-
         """
         def as_numpy(a):
             """Convert a (list of) mx.NDArray into numpy.ndarray"""
@@ -100,11 +96,12 @@ class VOCMApMetric(mx.metric.EvalMetric):
 
         if gt_difficults is None:
             gt_difficults = [None for _ in gt_labels]
-
+        #print("pred_labels:{} pred_bboxes:{}".format(pred_labels.shape,pred_bboxes.shape))
         for pred_bbox, pred_label, pred_score, gt_bbox, gt_label, gt_difficult in zip(
                 *[as_numpy(x) for x in [pred_bboxes, pred_labels, pred_scores,
                                         gt_bboxes, gt_labels, gt_difficults]]):
             # strip padding -1 for pred and gt
+            #print("pred_label:{} pred_bbox:{}".format(pred_label.shape,pred_bbox.shape))
             valid_pred = np.where(pred_label.flat >= 0)[0]
             pred_bbox = pred_bbox[valid_pred, :]
             pred_label = pred_label.flat[valid_pred].astype(int)
@@ -211,7 +208,6 @@ class VOCMApMetric(mx.metric.EvalMetric):
     def _average_precision(self, rec, prec):
         """
         calculate average precision
-
         Params:
         ----------
         rec : numpy.array
@@ -243,14 +239,12 @@ class VOCMApMetric(mx.metric.EvalMetric):
 
 class VOC07MApMetric(VOCMApMetric):
     """ Mean average precision metric for PASCAL V0C 07 dataset
-
     Parameters:
     ---------
     iou_thresh : float
         IOU overlap threshold for TP
     class_names : list of str
         optional, if provided, will print out AP for each class
-
     """
     def __init__(self, *args, **kwargs):
         super(VOC07MApMetric, self).__init__(*args, **kwargs)
@@ -259,7 +253,6 @@ class VOC07MApMetric(VOCMApMetric):
         """
         calculate average precision, override the default one,
         special 11-point metric
-
         Params:
         ----------
         rec : numpy.array
