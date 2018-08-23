@@ -115,8 +115,13 @@ class CascadeRCNN(RCNN2):
             
             self.sampler = RCNNTargetSampler(
                     num_image=self._max_batch, num_proposal=rpn_train_post_nms,
-                    num_sample=num_sample, pos_iou_thresh=pos_iou_thresh, pos_ratio=pos_ratio)
-
+                    num_sample=num_sample, pos_iou_thresh=pos_iou_thresh,pos_iou_thresh_hg=1, pos_ratio=pos_ratio)
+            self.sampler_2nd = RCNNTargetSampler(
+                    num_image=self._max_batch, num_proposal=self._num_sample,
+                    num_sample=self._num_sample, pos_iou_thresh=0.6,pos_iou_thresh_hg=0.95, pos_ratio=0.25)
+            self.sampler_3rd = RCNNTargetSampler(
+                    num_image=self._max_batch, num_proposal=self._num_sample,
+                    num_sample=self._num_sample, pos_iou_thresh=0.7,pos_iou_thresh_hg=0.95, pos_ratio=0.25)
             self.box_decoder_2nd = NormalizedBoxCenterDecoder(stds=(.05, .05, .1, .1))
             self.box_decoder_3rd = NormalizedBoxCenterDecoder(stds=(.033, .033, .067, .067))
 
@@ -237,14 +242,9 @@ class CascadeRCNN(RCNN2):
 
         # casscade rcnn 
         # 2nd decode rcnn box
-        self.sampler_2nd = RCNNTargetSampler(
-                num_image=self._max_batch, num_proposal=self._num_sample,
-                num_sample=self._num_sample, pos_iou_thresh=0.6, pos_ratio=0.25)
-        self.sampler_3rd = RCNNTargetSampler(
-                num_image=self._max_batch, num_proposal=self._num_sample,
-                num_sample=self._num_sample, pos_iou_thresh=0.7, pos_ratio=0.25)
+
         roi_2nd = self.decode_bbox(source_bbox=rpn_box, \
-            encoded_bbox=box_pred.transpose((0, 2, 1, 3))[:,:,0,:], stds=(.05, .05, .1, .1))
+            encoded_bbox=box_pred.transpose((0, 2, 1, 3))[:,0,:,:], stds=(.05, .05, .1, .1))
         # roi_2nd_score = 
         if autograd.is_training():
             roi_2nd, samples_2nd, matches_2nd = self.sampler_2nd(roi_2nd, gt_box)
@@ -259,7 +259,7 @@ class CascadeRCNN(RCNN2):
 
         # decode rcnn box
         roi_3rd = self.decode_bbox(source_bbox=roi_2nd, \
-            encoded_bbox=box_pred_2nd.transpose((0, 2, 1, 3))[:,:,0,:], stds=(.033, .033, .067, .067))
+            encoded_bbox=box_pred_2nd.transpose((0, 2, 1, 3))[:,0,:,:], stds=(.033, .033, .067, .067))
         if autograd.is_training():
             roi_3rd, samples_3rd, matches_3rd = self.sampler_3rd(roi_3rd, gt_box)
         pooled_feat_3rd = self.ROIExtraction(F=F, feature=feat, bbox=roi_3rd)
@@ -296,10 +296,10 @@ class CascadeRCNN(RCNN2):
         cls_ids = cls_ids.transpose((0, 2, 1)).reshape((0, 0, 0, 1))
         scores = scores.transpose((0, 2, 1)).reshape((0, 0, 0, 1))
         # box_pred (B, N, C, 4) -> (B, C, N, 4)
-        box_pred = box_pred.transpose((0, 2, 1, 3))
+        box_pred = box_pred_3rd.transpose((0, 2, 1, 3))
 
         # rpn_boxes (B, N, 4) -> B * (1, N, 4)
-        rpn_boxes = _split(rpn_box, axis=0, num_outputs=self._max_batch, squeeze_axis=False)
+        rpn_boxes = _split(roi_3rd, axis=0, num_outputs=self._max_batch, squeeze_axis=False)
         # cls_ids, scores (B, C, N, 1) -> B * (C, N, 1)
         cls_ids = _split(cls_ids, axis=0, num_outputs=self._max_batch, squeeze_axis=True)
         scores = _split(scores, axis=0, num_outputs=self._max_batch, squeeze_axis=True)
@@ -672,10 +672,10 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         features=features, top_features=top_features, classes=classes,
         short=600, max_size=1000, train_patterns=train_patterns,
         nms_thresh=0.3, nms_topk=400, post_nms=100,
-        roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
+        roi_mode='pool', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
-        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+        rpn_train_pre_nms=5000, rpn_train_post_nms=300,
+        rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

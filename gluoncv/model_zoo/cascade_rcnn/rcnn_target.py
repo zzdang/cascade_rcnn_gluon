@@ -40,13 +40,14 @@ class RCNNTargetSampler(gluon.HybridBlock):
         to be sampled.
 
     """
-    def __init__(self, num_image, num_proposal, num_sample, pos_iou_thresh, pos_ratio):
+    def __init__(self, num_image, num_proposal, num_sample, pos_iou_thresh,pos_iou_thresh_hg, pos_ratio):
         super(RCNNTargetSampler, self).__init__()
         self._num_image = num_image
         self._num_proposal = num_proposal
         self._num_sample = num_sample
         self._max_pos = int(round(num_sample * pos_ratio))
         self._pos_iou_thresh = pos_iou_thresh
+        self._pos_iou_thresh_hg = pos_iou_thresh_hg
 
     #pylint: disable=arguments-differ
     def hybrid_forward(self, F, rois,  gt_boxes):
@@ -96,8 +97,10 @@ class RCNNTargetSampler(gluon.HybridBlock):
                 
                 # mark positive samples with 3
                 pos_mask = ious_max >= self._pos_iou_thresh
+                pos_mask = F.broadcast_logical_and(pos_mask, ious_max <= self._pos_iou_thresh_hg)
                 mask = F.where(pos_mask, F.ones_like(mask) * 3, mask)
 
+                mask = F.where(ious_max > self._pos_iou_thresh_hg, F.zeros_like(mask), mask)
                 # shuffle mask
                 rand = F.random.uniform(0, 1, shape=(self._num_proposal + 100,))
                 rand = F.slice_like(rand, ious_argmax)
