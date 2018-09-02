@@ -214,15 +214,6 @@ class CascadeRCNN(RCNN2):
             # index = int(rpn_index.sum().asnumpy())
             # rpn_box = rpn_box.slice_axis(axis=1,begin=0,end =index)
             # #rpn_box = self.rpn_box_clip(rpn_box)
-            # if index < self._num_sample:
-            #     self.sampler = RCNNTargetSampler(
-            #     num_image=self._max_batch, num_proposal=index,
-            #     num_sample=-1, pos_iou_thresh=0.5, pos_ratio=0.25)
-            # else:
-            #     self.sampler = RCNNTargetSampler(
-            #     num_image=self._max_batch, num_proposal=index,
-            #     num_sample=self._num_sample, pos_iou_thresh=0.5, pos_ratio=0.25)
-            # sample 128 roi
             assert gt_box is not None
             rpn_box, samples, matches = self.sampler(rpn_box, gt_box)
         else:
@@ -273,9 +264,6 @@ class CascadeRCNN(RCNN2):
  
         # no need to convert bounding boxes in training, just return
         if autograd.is_training():
-            # box_pred = box_pred.transpose((1, 0, 2))
-            # box_pred_2nd = box_pred_2nd.transpose((1, 0, 2))
-            # box_pred_3rd = box_pred_3rd.transpose((1, 0, 2))
 
             rpn_result  = raw_rpn_score, raw_rpn_box, anchors
             cascade_rcnn_result = [  [cls_pred_3rd, box_pred_3rd, roi_3rd, samples_3rd, matches_3rd ], 
@@ -296,7 +284,7 @@ class CascadeRCNN(RCNN2):
         cls_ids = cls_ids.transpose((0, 2, 1)).reshape((0, 0, 0, 1))
         scores = scores.transpose((0, 2, 1)).reshape((0, 0, 0, 1))
         # box_pred (B, N, C, 4) -> (B, C, N, 4)
-        box_pred =F.squeeze(box_pred_2nd.transpose((0, 2, 1, 3)), axis=1)
+        box_pred = box_pred_3rd.transpose((0, 2, 1, 3))
 
         # rpn_boxes (B, N, 4) -> B * (1, N, 4)
         rpn_boxes = _split(roi_3rd, axis=0, num_outputs=self._max_batch, squeeze_axis=False)
@@ -658,7 +646,7 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=12000, rpn_train_post_nms=1000,
-        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+        rpn_train_pre_nms=6000, rpn_train_post_nms=300,
+        rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=5,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

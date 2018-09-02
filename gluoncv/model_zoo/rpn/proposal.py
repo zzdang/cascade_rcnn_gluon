@@ -73,7 +73,9 @@ class RPNProposal(gluon.HybridBlock):
             height = ymax - ymin
             # TODO:(zhreshold), there's im_ratio to handle here, but it requires
             # add' info, and we don't expect big difference
-            invalid = (width < self._min_size) + (height < self._min_size)
+            #score_neg = 1 - score
+            invalid = ((width < self._min_size) + (height < self._min_size)) * (score > 0.01)
+
 
             # # remove out of bound anchors
             # axmin, aymin, axmax, aymax = F.split(anchor, axis=-1, num_outputs=4)

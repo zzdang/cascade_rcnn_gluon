@@ -13,12 +13,10 @@ edited by Yuerong Chen and Ning Li
 ## Benchmarking
 1. PASCAL VOC 2007 (Train/Test: 2007+2012trainval/2007test, shorter size: 600)
 
-model            | #GPUs | bs | lr | epoch | decay | AP50 
------------------|--------|-----|--------|------|------|-----
-VGG-RPN-baseline     | 2 | 2    |1e-3|  20  |  14  | 73.0  
-VGG-RPN-cascade      | 2 | 2    |1e-3|  20  |  14  | 75.3
-VGG-RPN-baseline(pruned)| 2 | 2    |5e-4|  20  |  14  | 73
-VGG-RPN-cascade(pruned) | 2 | 2    |5e-4|  20  |  14  | 75
+model            | #GPUs | bs | lr | epoch | decay | AP50  |  AP75  
+-----------------|--------|-----|--------|------|------|-------|-------
+VGG-RPN-baseline(pruned)| 2 | 2    |5e-4|  22  |  14  | 75    | wait
+VGG-RPN-cascade(pruned) | 2 | 2    |5e-4|  22  |  14  | 75.59 | 53.79
 
 ## Installation
 
