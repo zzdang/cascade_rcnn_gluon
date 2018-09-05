@@ -382,7 +382,7 @@ def train(net, train_data, val_data, eval_metric, args):
             metric.reset()
         tic = time.time()
         btic = time.time()
-        net.hybridize(static_alloc=True)
+        net.hybridize(active =False,static_alloc=True)
         print(net)
         base_lr = trainer.learning_rate
         #train start

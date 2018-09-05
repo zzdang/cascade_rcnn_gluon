@@ -1,6 +1,5 @@
 """RPN proposals."""
 from __future__  import absolute_import
-
 from mxnet import autograd
 from mxnet import gluon
 from ...nn.bbox import BBoxCornerToCenter, BBoxClipToImage
@@ -74,9 +73,9 @@ class RPNProposal(gluon.HybridBlock):
             # TODO:(zhreshold), there's im_ratio to handle here, but it requires
             # add' info, and we don't expect big difference
             #score_neg = 1 - score
-            invalid = ((width < self._min_size) + (height < self._min_size)) * (score > 0.01)
-
-
+            invalid = ((width < self._min_size) + (height < self._min_size)) + (score < 0.01)
+            #print((invalid==True).sum(),  invalid.shape)
+ 
             # # remove out of bound anchors
             # axmin, aymin, axmax, aymax = F.split(anchor, axis=-1, num_outputs=4)
             # # it's a bit tricky to get right/bottom boundary in hybridblock
@@ -88,6 +87,8 @@ class RPNProposal(gluon.HybridBlock):
             #    F.broadcast_greater(aymax, hrange)
             # avoid invalid anchors suppress anchors with 0 confidence
             score = F.where(invalid, F.ones_like(invalid) * -1, score)
+
+            #print("score:{}".format(score.shape))
             invalid = F.repeat(invalid, axis=-1, repeats=4)
             roi = F.where(invalid, F.ones_like(invalid) * -1, roi)
 

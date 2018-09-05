@@ -57,6 +57,7 @@ class VOCDetection(VisionDataset):
         self._image_path = os.path.join('{}', 'JPEGImages', '{}.jpg')
         self.index_map = index_map or dict(zip(self.classes, range(self.num_class)))
         self._label_cache = self._preload_labels() if preload_label else None
+        #self._ign_region = self._load_ign(splits)
 
     def __str__(self):
         detail = ','.join([str(s[0]) + s[1] for s in self._splits])
@@ -74,6 +75,8 @@ class VOCDetection(VisionDataset):
         img_id = self._items[idx]
         img_path = self._image_path.format(*img_id)
         label = self._label_cache[idx] if self._label_cache else self._load_label(idx)
+        #img_name = img_id[1] + '.jpg'
+        #ign_info = self._ign_region[img_name]
         img = mx.image.imread(img_path, 1)
         if self._transform is not None:
             return self._transform(img, label)
@@ -88,6 +91,42 @@ class VOCDetection(VisionDataset):
             with open(lf, 'r') as f:
                 ids += [(root, line.strip()) for line in f.readlines()]
         return ids
+
+
+    def _load_ign(self, splits ):
+        # load ign
+        if splits[0][1] == 'trainval':
+            txt_name = 'window_file_voc0712_trainval.txt'
+        else:
+            txt_name = 'window_file_voc07_test.txt'
+        txt_lf = os.path.join('data/voc',txt_name )
+        with open(txt_lf,'r') as f:
+            content = f.read()
+
+            images_info = content.split('#')
+            images_info = [i for i in images_info if i !='' ]
+            ign_info ={}
+            for idx, image_info in enumerate(images_info):
+
+                _, filepath, _, height, width, bbox_num, *bboxes_info = image_info.split('\n')
+                
+                filename = os.path.basename(filepath)
+                bbox_num = int(bbox_num)
+
+                bbox_info_list = []
+                for bbox_idx in range(bbox_num):
+                    one_bbox_info = bboxes_info [ bbox_idx ]
+                    one_bbox_info = one_bbox_info.split(' ')
+                    one_bbox_info = [ int(i) for i in one_bbox_info]
+                    one_bbox_ign = [float(one_bbox_info[3]),float(one_bbox_info[4]),float(one_bbox_info[5]),\
+                        float(one_bbox_info[6]),float(one_bbox_info[0]-1),float(one_bbox_info[2])]
+                    bbox_info_list.append(one_bbox_ign)
+
+
+                ign_info[filename]= np.array(bbox_info_list)
+        return ign_info
+
+
 
     def _load_label(self, idx):
         """Parse xml file and return labels."""

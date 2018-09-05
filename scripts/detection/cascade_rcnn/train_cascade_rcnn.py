@@ -263,6 +263,13 @@ def get_rcnn_box_loss(box_pred, box_targets, box_masks, cls_targets):
     num_rcnn_pos = (cls_targets >= 0).sum()
     rcnn_huber_loss = mx.gluon.loss.HuberLoss()
     rcnn_box_loss = rcnn_huber_loss(box_pred, box_targets, box_masks) * box_pred.size / box_pred.shape[0] / num_rcnn_pos
+
+    # calculate num_inst
+    #num_inst = mx.nd.sum(box_masks)
+    #print(box_pred.size,box_pred.shape[0])
+    # calculate smooth_l1
+    # loss = mx.nd.sum(box_masks * mx.nd.smooth_l1(box_pred - box_targets, scalar=1))
+    # rcnn_box_loss = loss / num_rcnn_pos
     return rcnn_box_loss
 
 def get_rcnn_cls_box_loss(cls_pred, cls_targets, box_pred, box_targets, box_masks):
@@ -281,12 +288,10 @@ def get_rpn_cls_loss(rpn_prediction, rpn_cls_targets, rpn_box_targets, rpn_box_m
     rpn_score, rpn_box, anchors = rpn_prediction
     rpn_score = rpn_score.squeeze(axis=-1)
     num_rpn_pos = (rpn_cls_targets >= 0).sum()
-    rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
-    rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
-    rpn_loss = rpn_loss1 + rpn_loss2
 
     rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
     rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
+    #rpn_loss2 = mx.nd.sum(rpn_box_masks * mx.nd.smooth_l1(rpn_box - rpn_box_targets, scalar=3)) / num_rpn_pos
     return rpn_loss1, rpn_loss2, rpn_score, rpn_box
 
 def get_lr_at_iter(alpha):

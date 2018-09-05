@@ -97,8 +97,10 @@ class RCNNTargetSampler(gluon.HybridBlock):
                 # ignore iou > thresh_hg roi
                 mask = F.where(ious_max > self._pos_iou_thresh_hg, F.zeros_like(mask), mask)
                 # ignore roi [-1,-1,-1,-1]
-                roi_cord = all_roi.max(axis=0)
-                mask = F.where(roi_cord < 0, F.zeros_like(mask), mask)
+
+                roi_cord = all_roi.max(axis=1)
+
+                mask = F.where(roi_cord ==-1, F.zeros_like(mask), mask)
 
                 # shuffle mask
                 rand = F.random.uniform(0, 1, shape=(self._num_proposal + 100,))
