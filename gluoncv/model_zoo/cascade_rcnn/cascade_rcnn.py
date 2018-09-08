@@ -235,7 +235,7 @@ class CascadeRCNN(RCNN2):
         # 2nd decode rcnn box
 
         roi_2nd = self.decode_bbox(source_bbox=rpn_box, \
-            encoded_bbox=box_pred.transpose((0, 2, 1, 3))[:,0,:,:], stds=(.05, .05, .1, .1))
+            encoded_bbox=box_pred.transpose((0, 2, 1, 3))[:,0,:,:], stds=(.1, .1, .2, .2))
         # roi_2nd_score = 
         if autograd.is_training():
             roi_2nd, samples_2nd, matches_2nd = self.sampler_2nd(roi_2nd, gt_box)
@@ -250,7 +250,7 @@ class CascadeRCNN(RCNN2):
 
         # decode rcnn box
         roi_3rd = self.decode_bbox(source_bbox=roi_2nd, \
-            encoded_bbox=box_pred_2nd.transpose((0, 2, 1, 3))[:,0,:,:], stds=(.033, .033, .067, .067))
+            encoded_bbox=box_pred_2nd.transpose((0, 2, 1, 3))[:,0,:,:], stds=(.05, .05, .1, .1))
         if autograd.is_training():
             roi_3rd, samples_3rd, matches_3rd = self.sampler_3rd(roi_3rd, gt_box)
         pooled_feat_3rd = self.ROIExtraction(F=F, feature=feat, bbox=roi_3rd)
@@ -663,10 +663,10 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         features=features, top_features=top_features, classes=classes,
         short=600, max_size=1000, train_patterns=train_patterns,
         nms_thresh=0.3, nms_topk=400, post_nms=100,
-        roi_mode='pool', roi_size=(7, 7), stride=16, clip=None,
+        roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=6000, rpn_train_post_nms=300,
+        rpn_train_pre_nms=3000, rpn_train_post_nms=300,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=16,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

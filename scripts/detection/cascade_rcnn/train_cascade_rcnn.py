@@ -282,12 +282,12 @@ def get_rpn_cls_loss(rpn_prediction, rpn_cls_targets, rpn_box_targets, rpn_box_m
     rpn_score, rpn_box, anchors = rpn_prediction
     rpn_score = rpn_score.squeeze(axis=-1)
     num_rpn_pos = (rpn_cls_targets >= 0).sum()
-    rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
-    rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
-    rpn_loss = rpn_loss1 + rpn_loss2
 
     rpn_loss1 = rpn_cls_loss(rpn_score, rpn_cls_targets, rpn_cls_targets >= 0) * rpn_cls_targets.size / num_rpn_pos
-    rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
+    #rpn_loss2 = rpn_box_loss(rpn_box, rpn_box_targets, rpn_box_masks) * rpn_box.size / num_rpn_pos
+    #num_inst = mx.nd.sum(rpn_bbox_weight) / 4
+    rpn_loss2 = mx.nd.sum(rpn_box_masks * mx.nd.smooth_l1(rpn_box - rpn_box_targets, scalar=3))
+
     return rpn_loss1, rpn_loss2, rpn_score, rpn_box
 
 def get_lr_at_iter(alpha):
