@@ -88,7 +88,6 @@ class RPNProposal(gluon.HybridBlock):
             # avoid invalid anchors suppress anchors with 0 confidence
             score = F.where(invalid, F.ones_like(invalid) * -1, score)
 
-            #print("score:{}".format(score.shape))
             invalid = F.repeat(invalid, axis=-1, repeats=4)
             roi = F.where(invalid, F.ones_like(invalid) * -1, roi)
 

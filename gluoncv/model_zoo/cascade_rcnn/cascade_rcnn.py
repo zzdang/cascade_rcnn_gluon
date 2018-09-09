@@ -98,7 +98,7 @@ class CascadeRCNN(RCNN2):
         stds_2nd = (.05, .05, .1, .1)
         stds_3rd = (.033, .033, .067, .067)
         means_2nd= (0., 0., 0., 0.)
-        self._target_generator     = {RCNNTargetGenerator(self.num_class)}
+        self._target_generator     = {RCNNTargetGenerator(self.num_class,means_2nd,stds=(.1, .1, .2, .2))}
         self._target_generator_2nd = {RCNNTargetGenerator(self.num_class, means_2nd, stds_2nd)}
         self._target_generator_3rd = {RCNNTargetGenerator(self.num_class, means_2nd, stds_3rd)}
         self._rpn_target_generator = set([RPNTargetGenerator(
@@ -268,9 +268,9 @@ class CascadeRCNN(RCNN2):
         if autograd.is_training():
 
             rpn_result  = raw_rpn_score, raw_rpn_box, anchors
-            cascade_rcnn_result = [  [cls_pred_3rd, box_pred_3rd, roi_3rd, samples_3rd, matches_3rd ], 
+            cascade_rcnn_result = [  [cls_pred, box_pred, rpn_box, samples, matches  ],            
                                      [cls_pred_2nd, box_pred_2nd, roi_2nd, samples_2nd, matches_2nd],
-                                     [cls_pred, box_pred, rpn_box, samples, matches  ] ]
+                                     [cls_pred_3rd, box_pred_3rd, roi_3rd, samples_3rd, matches_3rd ] ]
  
             return  rpn_result, cascade_rcnn_result         
         
@@ -648,7 +648,7 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
         rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
-        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+        rpn_train_pre_nms=10000, rpn_train_post_nms=600,
         rpn_test_pre_nms=5000, rpn_test_post_nms=300, rpn_min_size=5,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)

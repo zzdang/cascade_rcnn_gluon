@@ -95,7 +95,12 @@ class RCNNTargetSampler(gluon.HybridBlock):
                 pos_mask = F.broadcast_logical_and(pos_mask, ious_max <= self._pos_iou_thresh_hg)
                 mask = F.where(pos_mask, F.ones_like(mask) * 3, mask)
                 # ignore iou > thresh_hg roi
-                mask = F.where(ious_max > self._pos_iou_thresh_hg, F.zeros_like(mask), mask)
+                #mask = F.where(ious_max > self._pos_iou_thresh_hg, F.zeros_like(mask), mask)
+
+                invalid = (ious_max > self._pos_iou_thresh_hg).expand_dims(axis=1)
+                invalid = F.repeat(invalid, axis=1, repeats=4)
+
+                all_roi = F.where(invalid, F.ones_like(invalid) * -1, all_roi)
                 # ignore roi [-1,-1,-1,-1]
 
                 roi_cord = all_roi.max(axis=1)

@@ -261,12 +261,14 @@ def get_rcnn_cls_loss(cls_pred, cls_targets):
 
 def get_rcnn_box_loss(box_pred, box_targets, box_masks, cls_targets):
     num_rcnn_pos = (cls_targets >= 0).sum()
+    #print("~~~~~~")
+    #print(num_rcnn_pos)
     rcnn_huber_loss = mx.gluon.loss.HuberLoss()
     rcnn_box_loss = rcnn_huber_loss(box_pred, box_targets, box_masks) * box_pred.size / box_pred.shape[0] / num_rcnn_pos
 
     # calculate num_inst
     #num_inst = mx.nd.sum(box_masks)
-    #print(box_pred.size,box_pred.shape[0])
+    #print(num_inst)
     # calculate smooth_l1
     # loss = mx.nd.sum(box_masks * mx.nd.smooth_l1(box_pred - box_targets, scalar=1))
     # rcnn_box_loss = loss / num_rcnn_pos
