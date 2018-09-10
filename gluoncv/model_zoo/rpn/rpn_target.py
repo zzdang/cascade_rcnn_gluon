@@ -154,11 +154,13 @@ class RPNTargetGenerator(gluon.Block):
             new_matches = []
             for i in range(4):
                 bbox_ =  F.squeeze(F.slice_axis(bbox, axis=0, begin=i, end=i+1), axis=0)
+                idx = np.where(bbox_[ :, 0].asnumpy() > -1)[0][-1]
+                bbox_=bbox_[:idx+1,:]
                 #print(bbox_.shape,anchor.shape)
-                # width_ =  F.squeeze(F.slice_axis(width, axis=0, begin=i, end=i+1), axis=0)
-                # height_ =  F.squeeze(F.slice_axis(height, axis=0, begin=i, end=i+1), axis=0)
-                width_ = 600
-                height_ = 600
+                width_ =  F.squeeze(F.slice_axis(width, axis=0, begin=i, end=i+1), axis=0)
+                height_ =  F.squeeze(F.slice_axis(height, axis=0, begin=i, end=i+1), axis=0)
+                # width_ = 600
+                # height_ = 600
                 # calculate ious between (N, 4) anchors and (M, 4) bbox ground-truths
                 # ious is (N, M)
                 ious = mx.nd.contrib.box_iou(anchor, bbox_, format='corner')

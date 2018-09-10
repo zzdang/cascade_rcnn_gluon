@@ -50,7 +50,9 @@ class RCNN2(gluon.HybridBlock):
         Matching pattern for trainable parameters.
 
     """
-    def __init__(self, features, top_features, classes,
+    def __init__(self, features, top_features, 
+                 top_features_2nd,top_features_3rd,
+                 classes,
                  short, max_size, train_patterns,
                  nms_thresh, nms_topk, post_nms,
                  roi_mode, roi_size, stride, clip, **kwargs):
@@ -83,12 +85,12 @@ class RCNN2(gluon.HybridBlock):
             self.box_to_center = BBoxCornerToCenter()
             self.box_decoder = NormalizedBoxCenterDecoder(clip=clip)
             # cascade 2nd and 3rd rcnn
-            self.top_features_2nd = top_features
+            self.top_features_2nd = top_features_2nd
             self.class_predictor_2nd = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
             self.box_predictor_2nd = nn.Dense(
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
-            self.top_features_3rd = top_features
+            self.top_features_3rd = top_features_3rd
             self.class_predictor_3rd = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
             self.box_predictor_3rd = nn.Dense(

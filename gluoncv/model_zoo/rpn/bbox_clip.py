@@ -26,8 +26,8 @@ class BBoxClipToImage(mx.operator.CustomOp):
         out_ = []
         for i in range(4):
             roi =  F.squeeze(F.slice_axis(x, axis=0, begin=i, end=i+1), axis=0)
-            width_ =  600 #int(F.squeeze(F.slice_axis(width, axis=0, begin=i, end=i+1), axis=0).asnumpy())
-            height_ = 600 # int(F.squeeze(F.slice_axis(height, axis=0, begin=i, end=i+1), axis=0).asnumpy())
+            width_ =  int(F.squeeze(F.slice_axis(width, axis=0, begin=i, end=i+1), axis=0).asnumpy())
+            height_ = int(F.squeeze(F.slice_axis(height, axis=0, begin=i, end=i+1), axis=0).asnumpy())
             #height, width = shape_like.shape[-2:]
             assert roi.shape[self.axis] == 4
             xmin, ymin, xmax, ymax = roi.split(axis=self.axis, num_outputs=4)

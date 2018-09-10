@@ -75,7 +75,9 @@ class CascadeRCNN(RCNN2):
         to be sampled.
 
     """
-    def __init__(self, features, top_features, classes,
+    def __init__(self, features, top_features, 
+                 top_features_2nd,top_features_3rd,
+                 classes,
                  short, max_size, train_patterns=None,
                  nms_thresh=0.3, nms_topk=400, post_nms=100,
                  roi_mode='align', roi_size=(14, 14), stride=16, clip=None,
@@ -85,7 +87,9 @@ class CascadeRCNN(RCNN2):
                  rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
                  num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25, **kwargs):
         super(CascadeRCNN, self).__init__(
-            features=features, top_features=top_features, classes=classes,
+            features=features, top_features=top_features,
+            top_features_2nd=top_features_2nd,top_features_3rd=top_features_3rd, 
+            classes=classes,
             short=short, max_size=max_size, train_patterns=train_patterns,
             nms_thresh=nms_thresh, nms_topk=nms_topk, post_nms=post_nms,
             roi_mode=roi_mode, roi_size=roi_size, stride=stride, clip=clip, **kwargs)
@@ -269,9 +273,10 @@ class CascadeRCNN(RCNN2):
             # box_pred_3rd = box_pred_3rd.transpose((1, 0, 2))
 
             rpn_result  = raw_rpn_score, raw_rpn_box, anchors
-            cascade_rcnn_result = [  [cls_pred_3rd, box_pred_3rd, roi_3rd, samples_3rd, matches_3rd ], 
+            cascade_rcnn_result = [  [cls_pred, box_pred, rpn_box, samples, matches  ],
+                                    
                                      [cls_pred_2nd, box_pred_2nd, roi_2nd, samples_2nd, matches_2nd],
-                                     [cls_pred, box_pred, rpn_box, samples, matches  ] ]
+                                       [cls_pred_3rd, box_pred_3rd, roi_3rd, samples_3rd, matches_3rd ]]
  
             return  rpn_result, cascade_rcnn_result         
         
@@ -655,12 +660,14 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
     base_network = vgg16_pruned(pretrained=pretrained_base)
     features = base_network.features[:30]
     top_features =base_network.features[31:35]
-    # top_features_2nd =base_network.features[35:39]
-    # top_features_3rd =base_network.features[39:43]
+    top_features_2nd =base_network.features[35:39]
+    top_features_3rd =base_network.features[39:43]
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
     return get_cascade_rcnn(
         name='vgg16_pruned', dataset='voc', pretrained=pretrained,
-        features=features, top_features=top_features, classes=classes,
+        features=features, top_features=top_features, 
+        top_features_2nd=top_features_2nd,top_features_3rd=top_features_3rd,
+        classes=classes,
         short=600, max_size=1000, train_patterns=train_patterns,
         nms_thresh=0.3, nms_topk=400, post_nms=100,
         roi_mode='align', roi_size=(7, 7), stride=16, clip=None,
