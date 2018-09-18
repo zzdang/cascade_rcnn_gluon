@@ -18,6 +18,17 @@ model            | #GPUs | bs | lr | epoch | decay | AP50  |  AP75
 VGG-RPN-baseline(pruned)| 2 | 2    |5e-4|  22  |  14  | 75    | wait
 VGG-RPN-cascade(pruned) | 2 | 2    |5e-4|  22  |  14  | 75.59 | 53.79
 
+
+
+## Developing Environment
+**MXNet 1.3.0**
+
+The repo is based on the 1.3.x version MXNet. You will probably need to go to the MXNet official github repo and compile it.
+
+If your MXNet installed by using pip install(at least on August). It should be of MXNet version 1.2.x, which is too old for this repo.  You might need to solve the related problems because of the version mismatch.
+
+
+
 ## Installation
 
 1. Clone the cascade_rcnn_gluon repository, and we'll call the directory that you cloned cascade_rcnn_gluon into CASCADE_ROOT
@@ -45,13 +56,14 @@ VGG-RPN-cascade(pruned) | 2 | 2    |5e-4|  22  |  14  | 75.59 | 53.79
 
 2. Download the pretrained models on ImageNet. For VGG-Net(we called vgg16_pruned), the FC layers are pruned and 2048 units per FC layer are remained. In addition, the two FC layers are copied three times for Cascade R-CNN training.
 
-	```Shell
-	# Download pre-trained model(You can download it use dropbox or baiduyun link)
-	-[dropbox link](https://www.dropbox.com/s/tjgcwqgber2tlxh/VGG_16_fc2048_prune.params?dl=0)
-	-[baiduyun link](https://pan.baidu.com/s/1RgG33zy40ssdWHdhPx0-Kg) passwd: b7ev
-
-	# copy the pre-trained models to $CASCADE_ROOT/models/
-	cp /PATH/TO/DOWNLOAD/MODEL $CASCADE_ROOT/models/
+  ```Shell
+  # Download pre-trained model(You can download it use dropbox or baiduyun link)
+  -[dropbox link](https://www.dropbox.com/s/tjgcwqgber2tlxh/VGG_16_fc2048_prune.params?dl=0)
+  -[baiduyun link](https://pan.baidu.com/s/1RgG33zy40ssdWHdhPx0-Kg) passwd: b7ev
+  
+  # copy the pre-trained models to $CASCADE_ROOT/models/
+  cp /PATH/TO/DOWNLOAD/MODEL $CASCADE_ROOT/models/
+  ```
 
 
 	# convert the vgg16_pruned pretained params to vgg 16_pruned_cascade params
