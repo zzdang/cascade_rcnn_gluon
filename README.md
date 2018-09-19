@@ -56,16 +56,16 @@ If your MXNet installed by using pip install(at least on August). It should be o
 
 2. Download the pretrained models on ImageNet. For VGG-Net(we called vgg16_pruned), the FC layers are pruned and 2048 units per FC layer are remained. In addition, the two FC layers are copied three times for Cascade R-CNN training.
 
-  ```Shell
-  # Download pre-trained model(You can download it use dropbox or baiduyun link)
-  -[dropbox link](https://www.dropbox.com/s/tjgcwqgber2tlxh/VGG_16_fc2048_prune.params?dl=0)
-  -[baiduyun link](https://pan.baidu.com/s/1RgG33zy40ssdWHdhPx0-Kg) passwd: b7ev
-  
-  # copy the pre-trained models to $CASCADE_ROOT/models/
-  cp /PATH/TO/DOWNLOAD/MODEL $CASCADE_ROOT/models/
-  ```
+    ```Shell
+    # Download pre-trained model(You can download it use dropbox or baiduyun link)
+    -[dropbox link](https://www.dropbox.com/s/tjgcwqgber2tlxh/VGG_16_fc2048_prune.params?dl=0)
+    -[baiduyun link](https://pan.baidu.com/s/1RgG33zy40ssdWHdhPx0-Kg) passwd: b7ev  
 
+    # copy the pre-trained models to $CASCADE_ROOT/models/
+    cp /PATH/TO/DOWNLOAD/MODEL $CASCADE_ROOT/models/
+    ```
 
+	```Shell
 	# convert the vgg16_pruned pretained params to vgg 16_pruned_cascade params
 	python load_params.py
 	```
