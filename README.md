@@ -15,8 +15,8 @@ edited by Yuerong Chen and Ning Li
 
 model            | #GPUs | bs | lr | epoch | decay | AP50  |  AP75  
 -----------------|--------|-----|--------|------|------|-------|-------
-VGG-RPN-baseline(pruned)| 2 | 2    |5e-4|  22  |  14  | 75    | wait
-VGG-RPN-cascade(pruned) | 2 | 2    |5e-4|  22  |  14  | 75.59 | 53.79
+VGG-RPN-baseline(pruned)| 2 | 1    |1e-4|  20  |  14  | 75    | wait
+VGG-RPN-cascade(pruned) | 2 | 1    |1e-4|  20 |  14  | 75.56 | 55.96
 
 ## Installation
 
