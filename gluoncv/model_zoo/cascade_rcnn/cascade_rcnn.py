@@ -655,6 +655,10 @@ def cascade_rcnn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwar
         top_features.add(getattr(base_network, layer))
         top_features_2nd.add(getattr(base_network, layer))
         top_features_3rd.add(getattr(base_network, layer))
+    print("~~~~~~~features~~~~~~~")
+    print(features)
+    print("~~~~~~~top_features~~~~~~~")
+    print(top_features)
     train_patterns = '|'.join(['.*dense', '.*rpn', '.*down(2|3|4)_conv', '.*layers(2|3|4)_conv'])
     return get_cascade_rcnn(
         name='resnet50_v1b', dataset='voc', pretrained=pretrained,
