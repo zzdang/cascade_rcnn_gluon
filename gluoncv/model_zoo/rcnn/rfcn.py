@@ -72,7 +72,10 @@ class RFCN(gluon.HybridBlock):
         with self.name_scope():
             self.features = features
             self.top_features = top_features
-            self.conv_new_1 = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            self.conv_new_1 = nn.HybridSequential()
+            self.conv_new_1.add(nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01)))
+            self.conv_new_1.add(nn.Activation('relu'))
+            #self.conv_new_1 = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
             self.rfcn_cls = nn.Conv2D((self.num_class+1) * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
             self.rfcn_bbox = nn.Conv2D(4 * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
 
@@ -80,11 +83,16 @@ class RFCN(gluon.HybridBlock):
             self.box_to_center = BBoxCornerToCenter()
             self.box_decoder = NormalizedBoxCenterDecoder(clip=clip)
             # cascade 2nd and 3rd rcnn
-            self.conv_new_2 = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            self.conv_new_2 = nn.HybridSequential()
+            self.conv_new_2.add(nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01)))
+            self.conv_new_2.add(nn.Activation('relu'))
+            # self.conv_new_2 = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
             self.rfcn_cls_2nd = nn.Conv2D((self.num_class+1) * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01)) 
             self.rfcn_bbox_2nd = nn.Conv2D(4 * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01)) 
 
-            self.conv_new_3 = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            self.conv_new_3 = nn.HybridSequential()
+            self.conv_new_3.add(nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01)))
+            self.conv_new_3.add(nn.Activation('relu'))
             self.rfcn_cls_3rd = nn.Conv2D((self.num_class+1) * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01)) 
             self.rfcn_bbox_3rd = nn.Conv2D(4 * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01)) 
 

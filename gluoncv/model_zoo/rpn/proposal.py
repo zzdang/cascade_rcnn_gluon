@@ -73,7 +73,7 @@ class RPNProposal(gluon.HybridBlock):
             # TODO:(zhreshold), there's im_ratio to handle here, but it requires
             # add' info, and we don't expect big difference
             #score_neg = 1 - score
-            invalid = ((width < self._min_size) + (height < self._min_size)) + (score < 0.01)
+            invalid = ((width < self._min_size) + (height < self._min_size)) #+ (score < 0.001)
             #print((invalid==True).sum(),  invalid.shape)
  
             # # remove out of bound anchors
