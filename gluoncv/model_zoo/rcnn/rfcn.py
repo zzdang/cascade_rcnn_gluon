@@ -101,14 +101,17 @@ class RFCN(gluon.HybridBlock):
             self.rfcn_cls_2nd.bias.lr_mult = 4.
             self.rfcn_bbox_2nd.bias.lr_mult = 4.
             self.conv_new_3 = nn.HybridSequential()
-            self.conv_new_3.add(nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01)))
+            conv_new_3_conv = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            conv_new_2_conv.weight.lr_mult = 4.
+            conv_new_2_conv.bias.lr_mult = 8.            
+            self.conv_new_3.add(conv_new_2_conv)
             self.conv_new_3.add(nn.Activation('relu'))
             self.rfcn_cls_3rd = nn.Conv2D((self.num_class+1) * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01)) 
             self.rfcn_bbox_3rd = nn.Conv2D(4 * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01)) 
-            self.rfcn_cls_3rd.weight.lr_mult = 2.
-            self.rfcn_bbox_3rd.weight.lr_mult = 2.
-            self.rfcn_cls_3rd.bias.lr_mult = 4.
-            self.rfcn_bbox_3rd.bias.lr_mult = 4.
+            self.rfcn_cls_3rd.weight.lr_mult = 4.
+            self.rfcn_bbox_3rd.weight.lr_mult = 4.
+            self.rfcn_cls_3rd.bias.lr_mult = 8.
+            self.rfcn_bbox_3rd.bias.lr_mult = 8.
 
     def collect_train_params(self, select=None):
         """Collect trainable params.
