@@ -61,12 +61,17 @@ class RPN(gluon.HybridBlock):
                 clip, nms_thresh, train_pre_nms, train_post_nms,
                 test_pre_nms, test_post_nms, min_size, stds=(1., 1., 1., 1.))
             self.conv1 = nn.HybridSequential()
-            self.conv1.add(nn.Conv2D(channels, 3, 1, 1, weight_initializer=weight_initializer))
+            conv1_conv = nn.Conv2D(channels, 3, 1, 1, weight_initializer=weight_initializer)
+            conv1_conv.bias.lr_mult = 2.
+            self.conv1.add(conv1_conv)
             self.conv1.add(nn.Activation('relu'))
             # use sigmoid instead of softmax, reduce channel numbers
             self.score = nn.Conv2D(anchor_depth, 1, 1, 0, weight_initializer=weight_initializer)
             self.loc = nn.Conv2D(anchor_depth * 4, 1, 1, 0, weight_initializer=weight_initializer)
-
+            self.score.bias.lr_mult = 2.
+            self.score.bias.wd_mult = 0.
+            self.loc.bias.lr_mult = 2.
+            self.loc.bias.wd_mult = 0.
     # pylint: disable=arguments-differ
     def hybrid_forward(self, F, x, img):
         """Forward RPN.

@@ -110,7 +110,7 @@ class CascadeRFCN(RFCN):
         # ROI features
         if self._roi_mode == 'pspool':
             pooled_feat = F.contrib.PSROIPooling(data=feature, rois=roi, spatial_scale=1. / self._stride, \
-                output_dim=output_dim,group_size=self._roi_size[0],pooled_size=self._roi_size[0]) # group_size=self._roi_size[0],
+                output_dim=output_dim,pooled_size=self._roi_size[0]) # group_size=self._roi_size[0],,pooled_size=self._roi_size[0]
         else:
             raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
         return pooled_feat
@@ -161,11 +161,15 @@ class CascadeRFCN(RFCN):
         conv_new_1 = self.conv_new_1(res5c)
         rfcn_cls_feat = self.rfcn_cls(conv_new_1)
         rfcn_bbox_feat = self.rfcn_bbox(conv_new_1)
-        # ROI features (ROI ps)        
+        # ROI features (ROI ps)
+        # _,infer_shape,_ = rfcn_cls_feat.infer_shape(data0=(1,3,600,800) )
+        # print("rfcn_cls_feat shape:{}".format(infer_shape))
         psroipooled_cls_rois = self.ROIExtraction(F=F, feature=rfcn_cls_feat, bbox=rpn_box, output_dim= self.num_class+1 )
         psroipooled_loc_rois = self.ROIExtraction(F=F, feature=rfcn_bbox_feat, bbox=rpn_box, output_dim=4)
-        cls_pred = F.Pooling(data=psroipooled_cls_rois,kernel=7,stride=7, pool_type='avg', global_pool=True)
-        box_pred = F.Pooling(data=psroipooled_loc_rois,kernel=7,stride=7, pool_type='avg', global_pool=True)
+        # _,infer_shape,_ = psroipooled_cls_rois.infer_shape(data0=(1,3,600,800),data1=(1,1,4) )
+        # print("psroipooled_cls_rois shape:{}".format(infer_shape))
+        cls_pred = F.Pooling(data=psroipooled_cls_rois,kernel=7,global_pool=True, pool_type='avg')
+        box_pred = F.Pooling(data=psroipooled_loc_rois,kernel=7,global_pool=True, pool_type='avg')
 
         num_roi = self._num_sample if autograd.is_training() else self._rpn_test_post_nms
         # cls_pred (B * N, C) -> (B, N, C)
@@ -186,8 +190,8 @@ class CascadeRFCN(RFCN):
         # ROI features (ROI ps)        
         psroipooled_cls_rois_2nd = self.ROIExtraction(F=F, feature=rfcn_cls_feat_2nd, bbox=roi_2nd, output_dim= self.num_class+1 )
         psroipooled_loc_rois_2nd = self.ROIExtraction(F=F, feature=rfcn_bbox_feat_2nd, bbox=roi_2nd, output_dim=4)
-        cls_pred_2nd = F.Pooling(data=psroipooled_cls_rois_2nd,kernel=self._roi_size,stride=7, pool_type='avg', global_pool=True)
-        box_pred_2nd = F.Pooling(data=psroipooled_loc_rois_2nd,kernel=self._roi_size,stride=7, pool_type='avg', global_pool=True)
+        cls_pred_2nd = F.Pooling(data=psroipooled_cls_rois_2nd,kernel=self._roi_size,global_pool=True,pool_type='avg')
+        box_pred_2nd = F.Pooling(data=psroipooled_loc_rois_2nd,kernel=self._roi_size,global_pool=True, pool_type='avg')
 
         # cls_pred (B * N, C) -> (B, N, C)
         cls_pred_2nd = cls_pred_2nd.reshape((self._max_batch, num_roi, self.num_class + 1))
@@ -205,8 +209,8 @@ class CascadeRFCN(RFCN):
         # ROI features (ROI ps)        
         psroipooled_cls_rois_3rd = self.ROIExtraction(F=F, feature=rfcn_cls_feat_3rd, bbox=roi_3rd, output_dim= self.num_class+1 )
         psroipooled_loc_rois_3rd = self.ROIExtraction(F=F, feature=rfcn_bbox_feat_3rd, bbox=roi_3rd, output_dim=4)
-        cls_pred_3rd = F.Pooling(data=psroipooled_cls_rois_3rd,kernel=self._roi_size,stride=7, pool_type='avg', global_pool=True)
-        box_pred_3rd = F.Pooling(data=psroipooled_loc_rois_3rd,kernel=self._roi_size,stride=7, pool_type='avg', global_pool=True)
+        cls_pred_3rd = F.Pooling(data=psroipooled_cls_rois_3rd,kernel=self._roi_size,stride=7,global_pool=True, pool_type='avg')
+        box_pred_3rd = F.Pooling(data=psroipooled_loc_rois_3rd,kernel=self._roi_size,stride=7,global_pool=True, pool_type='avg')
         # cls_pred (B * N, C) -> (B, N, C)
         cls_pred_3rd = cls_pred_3rd.reshape((self._max_batch, num_roi, self.num_class + 1))
         # box_pred (B * N, C * 4) -> (B, N, C, 4)
