@@ -12,7 +12,8 @@ from ...nn.coder import NormalizedBoxCenterDecoder, MultiPerClassDecoder
 from easydict import EasyDict as edict
 from ..rpn import RPNTargetGenerator
 __all__ = ['CascadeRFCN', 'get_cascade_rfcn',
-           'cascade_rfcn_resnet50_v1b_voc']
+           'cascade_rfcn_resnet50_v1b_voc',
+           'cascade_rfcn_resnet50_v2a_voc']
 
 
 class CascadeRFCN(RFCN):
