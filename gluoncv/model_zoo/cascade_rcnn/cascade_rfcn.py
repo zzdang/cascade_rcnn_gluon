@@ -355,7 +355,7 @@ def cascade_rfcn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwar
         num_sample=160, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
 
-def cascade_rcnn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwargs):
+def cascade_rfcn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwargs):
     r"""Faster RCNN model from the paper
     "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
     real-time object detection with region proposal networks"
