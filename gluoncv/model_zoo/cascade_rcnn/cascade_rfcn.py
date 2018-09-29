@@ -169,10 +169,10 @@ class CascadeRFCN(RFCN):
         psroipooled_loc_rois = self.ROIExtraction(F=F, feature=rfcn_bbox_feat, bbox=rpn_box, output_dim=4)
         # _,infer_shape,_ = psroipooled_cls_rois.infer_shape(data0=(1,3,600,800),data1=(1,1,4) )
         # print("psroipooled_cls_rois shape:{}".format(infer_shape))
-        cls_pred = self.rfcn_cls_pool(psroipooled_cls_rois) #F.Pooling(data=psroipooled_cls_rois,kernel=self._roi_size,global_pool=True, pool_type='avg')
-        box_pred = self.rfcn_bbox_pool(psroipooled_loc_rois) #F.Pooling(data=psroipooled_loc_rois,kernel=self._roi_size,global_pool=True, pool_type='avg')
-        # _,infer_shape,_ = box_pred.infer_shape(data0=(1,3,600,800),data1=(1,1,4) )
-        # print("box_pred shape:{}".format(infer_shape))
+        cls_pred = F.Pooling(data=psroipooled_cls_rois, kernel=(7, 7), stride=(7, 7), pool_type='avg')
+        box_pred = F.Pooling(data=psroipooled_loc_rois, kernel=(7, 7), stride=(7, 7), pool_type='avg')
+        # _,infer_shape,_ = cls_pred.infer_shape(data0=(1,3,600,800),data1=(1,1,4) )
+        # print("cls_pred shape:{}".format(infer_shape))
         num_roi = self._num_sample if autograd.is_training() else self._rpn_test_post_nms
         cls_pred = F.squeeze(cls_pred, axis=(2,3))
         box_pred = F.squeeze(box_pred, axis=(2,3))
@@ -194,8 +194,8 @@ class CascadeRFCN(RFCN):
         # ROI features (ROI ps)        
         psroipooled_cls_rois_2nd = self.ROIExtraction(F=F, feature=rfcn_cls_feat_2nd, bbox=roi_2nd, output_dim= self.num_class+1 )
         psroipooled_loc_rois_2nd = self.ROIExtraction(F=F, feature=rfcn_bbox_feat_2nd, bbox=roi_2nd, output_dim=4)
-        cls_pred_2nd = self.rfcn_cls_pool_2nd(psroipooled_cls_rois_2nd) #F.Pooling(data=psroipooled_cls_rois_2nd,kernel=self._roi_size,global_pool=True,pool_type='avg')
-        box_pred_2nd = self.rfcn_bbox_pool_2nd(psroipooled_loc_rois_2nd) #F.Pooling(data=psroipooled_loc_rois_2nd,kernel=self._roi_size,global_pool=True, pool_type='avg')
+        cls_pred_2nd = F.Pooling(data=psroipooled_cls_rois_2nd, kernel=(7, 7), stride=(7, 7),pool_type='avg')
+        box_pred_2nd = F.Pooling(data=psroipooled_loc_rois_2nd, kernel=(7, 7), stride=(7, 7), pool_type='avg')
         cls_pred_2nd = F.squeeze(cls_pred_2nd, axis=(2,3))
         box_pred_2nd = F.squeeze(box_pred_2nd, axis=(2,3))
         # cls_pred (B * N, C) -> (B, N, C)
@@ -214,8 +214,8 @@ class CascadeRFCN(RFCN):
         # ROI features (ROI ps)        
         psroipooled_cls_rois_3rd = self.ROIExtraction(F=F, feature=rfcn_cls_feat_3rd, bbox=roi_3rd, output_dim= self.num_class+1 )
         psroipooled_loc_rois_3rd = self.ROIExtraction(F=F, feature=rfcn_bbox_feat_3rd, bbox=roi_3rd, output_dim=4)
-        cls_pred_3rd = self.rfcn_cls_pool_3rd(psroipooled_cls_rois_3rd) #F.Pooling(data=psroipooled_cls_rois_3rd,kernel=self._roi_size,global_pool=True, pool_type='avg')
-        box_pred_3rd = self.rfcn_bbox_pool_3rd(psroipooled_loc_rois_3rd) #F.Pooling(data=psroipooled_loc_rois_3rd,kernel=self._roi_size,global_pool=True, pool_type='avg')
+        cls_pred_3rd = F.Pooling(data=psroipooled_cls_rois_3rd, kernel=(7, 7), stride=(7, 7), pool_type='avg')
+        box_pred_3rd = F.Pooling(data=psroipooled_loc_rois_3rd, kernel=(7, 7), stride=(7, 7),pool_type='avg')
         cls_pred_3rd = F.squeeze(cls_pred_3rd, axis=(2,3))
         box_pred_3rd = F.squeeze(box_pred_3rd, axis=(2,3))
         # cls_pred (B * N, C) -> (B, N, C)
@@ -394,10 +394,10 @@ def cascade_rfcn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwar
         features.add(getattr(base_network, layer))
     for layer in ['layer4']:
         top_features.add(getattr(base_network, layer))
-    train_patterns = '|'.join(['.*rfcn0_conv','.*dense', '.*rpn', '.*stage(2|3|4)_conv'])
-    print("~~~~~")
-    print(features.collect_params())
-    print(top_features.collect_params())
+    train_patterns = '|'.join(['.*rfcn0_conv','.*dense', '.*rpn', '.*stage(2|3|4)_conv'])  #
+    # print("~~~~~")
+    # print(features.collect_params())
+    # print(top_features.collect_params())
     return get_cascade_rfcn(
         name='resnet50_v2a', dataset='voc', pretrained=pretrained,
         features=features, top_features=top_features, 
