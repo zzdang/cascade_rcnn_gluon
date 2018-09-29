@@ -353,3 +353,54 @@ def cascade_rfcn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwar
         rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=5,
         num_sample=160, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
+
+def cascade_rcnn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwargs):
+    r"""Faster RCNN model from the paper
+    "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
+    real-time object detection with region proposal networks"
+
+    Parameters
+    ----------
+    pretrained : bool, optional, default is False
+        Load pretrained weights.
+    pretrained_base : bool, optional, default is True
+        Load pretrained base network, the extra layers are randomized. Note that
+        if pretrained is `Ture`, this has no effect.
+    ctx : Context, default CPU
+        The context in which to load the pretrained weights.
+    root : str, default '~/.mxnet/models'
+        Location for keeping the model parameters.
+
+    Examples
+    --------
+    >>> model = get_cascade_rcnn_resnet50_v2a_voc(pretrained=True)
+    >>> print(model)
+    """
+    from .resnet50_v2a import resnet50_v2a
+    from ...data import VOCDetection
+    classes = VOCDetection.CLASSES
+    pretrained_base = False if pretrained else pretrained_base
+    base_network = resnet50_v2a(pretrained=pretrained_base)
+    features = nn.HybridSequential()
+    top_features = nn.HybridSequential()
+    for layer in ['rescale'] + ['layer' + str(i) for i in range(4)]:
+        features.add(getattr(base_network, layer))
+    for layer in ['layer4']:
+        top_features.add(getattr(base_network, layer))
+    train_patterns = '|'.join(['.*rfcn0_conv','.*dense', '.*rpn', '.*stage(2|3|4)_conv'])
+    print("~~~~~")
+    print(features.collect_params())
+    print(top_features.collect_params())
+    return get_cascade_rfcn(
+        name='resnet50_v2a', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, 
+        classes=classes,
+        short=600, max_size=1000, train_patterns=train_patterns,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='pspool', roi_size=(7, 7), stride=16, clip=None,
+        rpn_channel=512, base_size=16, scales=( 8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=10000, rpn_train_post_nms=1000,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=5,
+        num_sample=160, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)

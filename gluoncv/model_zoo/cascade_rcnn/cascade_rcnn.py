@@ -599,9 +599,16 @@ def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwar
     pretrained_base = False if pretrained else pretrained_base
     base_network = vgg16_pruned(pretrained=pretrained_base)
     features = base_network.features[:30]
-    top_features =base_network.features[31:35]
-    top_features_2nd =base_network.features[35:39]
-    top_features_3rd =base_network.features[39:43]
+    top_features = nn.HybridSequential()
+    top_features_2nd = nn.HybridSequential()
+    top_features_3rd = nn.HybridSequential()
+    top_features.add(base_network.features[31])
+    top_features.add(base_network.features[33])
+    top_features_2nd.add(base_network.features[31])
+    top_features_2nd.add(base_network.features[33])
+    top_features_3rd.add(base_network.features[31])
+    top_features_3rd.add(base_network.features[33])
+    #print(top_features)
     train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
     return get_cascade_rcnn(
         name='vgg16_pruned', dataset='voc', pretrained=pretrained,

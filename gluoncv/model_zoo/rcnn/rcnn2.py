@@ -73,26 +73,47 @@ class RCNN2(gluon.HybridBlock):
         with self.name_scope():
             self.features = features
             self.top_features = top_features
+            self.top_features[0].bias.lr_mult = 2.
+            self.top_features[1].bias.lr_mult = 2.
             self.global_avg_pool = nn.GlobalAvgPool2D()
             self.class_predictor = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
             self.box_predictor = nn.Dense(
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
+            self.class_predictor.bias.lr_mult = 2.
+            self.box_predictor.bias.lr_mult = 2.
+
             self.cls_decoder = MultiPerClassDecoder(num_class=self.num_class+1)
             self.box_to_center = BBoxCornerToCenter()
             self.box_decoder = NormalizedBoxCenterDecoder(clip=clip)
             # cascade 2nd and 3rd rcnn
             self.top_features_2nd = top_features_2nd
+            self.top_features_2nd[0].weight.lr_mult = 2.
+            self.top_features_2nd[1].weight.lr_mult = 2.
+            self.top_features_2nd[0].bias.lr_mult = 4.
+            self.top_features_2nd[1].bias.lr_mult = 4.
             self.class_predictor_2nd = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
             self.box_predictor_2nd = nn.Dense(
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
+            self.class_predictor_2nd.weight.lr_mult = 2.
+            self.box_predictor_2nd.weight.lr_mult = 2.
+            self.class_predictor_2nd.bias.lr_mult = 4.
+            self.box_predictor_2nd.bias.lr_mult = 4.
+
             self.top_features_3rd = top_features_3rd
+            self.top_features_3rd[0].weight.lr_mult = 4.
+            self.top_features_3rd[1].weight.lr_mult = 4.
+            self.top_features_3rd[0].bias.lr_mult = 8.
+            self.top_features_3rd[1].bias.lr_mult = 8.
             self.class_predictor_3rd = nn.Dense(
                 self.num_class + 1, weight_initializer=mx.init.Normal(0.01))
+            self.class_predictor_3rd.weight.lr_mult = 4.
+            self.class_predictor_3rd.bias.lr_mult = 8.
             self.box_predictor_3rd = nn.Dense(
                 1 * 4, weight_initializer=mx.init.Normal(0.001))
-
+            self.box_predictor_3rd.weight.lr_mult = 4.
+            self.box_predictor_3rd.bias.lr_mult = 8.
 
     def collect_train_params(self, select=None):
         """Collect trainable params.
