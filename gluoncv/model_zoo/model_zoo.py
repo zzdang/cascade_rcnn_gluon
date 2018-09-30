@@ -55,6 +55,7 @@ def get_model(name, **kwargs):
         'faster_rcnn_resnet50_v1b_coco': faster_rcnn_resnet50_v1b_coco,
         'faster_rcnn_resnet50_v1b_custom': faster_rcnn_resnet50_v1b_custom,
         'faster_rcnn_vgg16_pruned_voc':faster_rcnn_vgg16_pruned_voc,
+        'rfcn_resnet50_v2a_voc':rfcn_resnet50_v2a_voc,
         'cascade_rcnn_resnet50_v1b_voc': cascade_rcnn_resnet50_v1b_voc,
         'cascade_rcnn_resnet50_v1b_coco': cascade_rcnn_resnet50_v1b_coco,
         'cascade_rcnn_resnet50_v2a_voc': cascade_rcnn_resnet50_v2a_voc,

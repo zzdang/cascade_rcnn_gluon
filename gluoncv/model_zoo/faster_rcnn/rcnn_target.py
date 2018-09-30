@@ -3,7 +3,7 @@ from __future__ import absolute_import
 
 from mxnet import gluon
 from mxnet import autograd
-from ...nn.coder import MultiClassEncoder, NormalizedPerClassBoxCenterEncoder
+from ...nn.coder import MultiClassEncoder, NormalizedPerClassBoxCenterEncoder, NormalizedBoxCenterEncoder
 
 
 class RCNNTargetSampler(gluon.HybridBlock):
@@ -125,6 +125,52 @@ class RCNNTargetSampler(gluon.HybridBlock):
         return new_rois, new_samples, new_matches
 
 
+# class RCNNTargetGenerator(gluon.Block):
+#     """RCNN target encoder to generate matching target and regression target values.
+#     Parameters
+#     ----------
+#     num_class : int
+#         Number of total number of positive classes.
+#     means : iterable of float, default is (0., 0., 0., 0.)
+#         Mean values to be subtracted from regression targets.
+#     stds : iterable of float, default is (.1, .1, .2, .2)
+#         Standard deviations to be divided from regression targets.
+#     """
+#     def __init__(self, num_class, means=(0., 0., 0., 0.), stds=(.1, .1, .2, .2)):
+#         super(RCNNTargetGenerator, self).__init__()
+#         self._cls_encoder = MultiClassEncoder()
+#         self._box_encoder = NormalizedPerClassBoxCenterEncoder(
+#             num_class=num_class, means=means, stds=stds)
+
+#     #pylint: disable=arguments-differ
+#     def forward(self, roi, samples, matches, gt_label, gt_box):
+#         """Components can handle batch images
+#         Parameters
+#         ----------
+#         roi: (B, N, 4), input proposals
+#         samples: (B, N), value +1: positive / -1: negative.
+#         matches: (B, N), value [0, M), index to gt_label and gt_box.
+#         gt_label: (B, M), value [0, num_class), excluding background class.
+#         gt_box: (B, M, 4), input ground truth box corner coordinates.
+#         Returns
+#         -------
+#         cls_target: (B, N), value [0, num_class + 1), including background.
+#         box_target: (B, N, C, 4), only foreground class has nonzero target.
+#         box_weight: (B, N, C, 4), only foreground class has nonzero weight.
+#         """
+#         with autograd.pause():
+#             # cls_target (B, N)
+#             cls_target = self._cls_encoder(samples, matches, gt_label)
+#             # box_target, box_weight (C, B, N, 4)
+#             box_target, box_mask = self._box_encoder(
+#                 samples, matches, roi, gt_label, gt_box)
+#             # modify shapes to match predictions
+#             # box (C, B, N, 4) -> (B, N, C, 4)
+#             box_target = box_target.transpose((1, 2, 0, 3))
+#             box_mask = box_mask.transpose((1, 2, 0, 3))
+#         return cls_target, box_target, box_mask
+
+
 class RCNNTargetGenerator(gluon.Block):
     """RCNN target encoder to generate matching target and regression target values.
     Parameters
@@ -139,8 +185,8 @@ class RCNNTargetGenerator(gluon.Block):
     def __init__(self, num_class, means=(0., 0., 0., 0.), stds=(.1, .1, .2, .2)):
         super(RCNNTargetGenerator, self).__init__()
         self._cls_encoder = MultiClassEncoder()
-        self._box_encoder = NormalizedPerClassBoxCenterEncoder(
-            num_class=num_class, means=means, stds=stds)
+        self._box_encoder = NormalizedBoxCenterEncoder(
+             means=means, stds=stds)
 
     #pylint: disable=arguments-differ
     def forward(self, roi, samples, matches, gt_label, gt_box):
@@ -163,9 +209,11 @@ class RCNNTargetGenerator(gluon.Block):
             cls_target = self._cls_encoder(samples, matches, gt_label)
             # box_target, box_weight (C, B, N, 4)
             box_target, box_mask = self._box_encoder(
-                samples, matches, roi, gt_label, gt_box)
+                samples, matches, roi, gt_box)
             # modify shapes to match predictions
             # box (C, B, N, 4) -> (B, N, C, 4)
-            box_target = box_target.transpose((1, 2, 0, 3))
-            box_mask = box_mask.transpose((1, 2, 0, 3))
+            #print("cls_target:{} box_target:{} box_mask:{}".format(cls_target.shape,box_target.shape,box_mask.shape))
+            #cls_target = cls_target
+            box_target = box_target.expand_dims(axis=2)
+            box_mask = box_mask.expand_dims(axis=2)
         return cls_target, box_target, box_mask

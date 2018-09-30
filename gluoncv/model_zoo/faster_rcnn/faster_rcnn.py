@@ -223,7 +223,7 @@ class FasterRCNN(RCNN):
         # cls_pred (B * N, C) -> (B, N, C)
         cls_pred = cls_pred.reshape((self._max_batch, num_roi, self.num_class + 1))
         # box_pred (B * N, C * 4) -> (B, N, C, 4)
-        box_pred = box_pred.reshape((self._max_batch, num_roi, self.num_class, 4))
+        box_pred = box_pred.reshape((self._max_batch, num_roi, 1, 4))
 
         # no need to convert bounding boxes in training, just return
         if autograd.is_training():
@@ -254,6 +254,7 @@ class FasterRCNN(RCNN):
         for rpn_box, cls_id, score, box_pred in zip(rpn_boxes, cls_ids, scores, box_preds):
             # box_pred (C, N, 4) rpn_box (1, N, 4) -> bbox (C, N, 4)
             bbox = self.box_decoder(box_pred, self.box_to_center(rpn_box))
+            bbox = F.repeat(bbox, repeats=self.num_class, axis=0)
             # res (C, N, 6)
             res = F.concat(*[cls_id, score, bbox], dim=-1)
             # res (C, self.nms_topk, 6)

@@ -5,3 +5,4 @@ from __future__ import absolute_import
 from .faster_rcnn import *
 from .resnet50_v2a import *
 from .vgg16_pruned import *
+from .rfcn import *
