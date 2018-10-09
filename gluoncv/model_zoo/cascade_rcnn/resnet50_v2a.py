@@ -90,7 +90,7 @@ class ResNet50V2(HybridBlock):
             self.layer3 = self._make_layer(stage_index=3, layers=6, in_channels=512,
                                            channels=1024, stride=2)
             self.layer4 = self._make_layer(stage_index=4, layers=3, in_channels=1024,
-                                           channels=2048, stride=2)
+                                           channels=2048, stride=1)
 
             self.layer4.add(nn.BatchNorm(epsilon=2e-5, use_global_stats=True))
             self.layer4.add(nn.Activation('relu'))

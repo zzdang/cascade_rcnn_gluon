@@ -10,7 +10,11 @@ from ..rcnn import RFCN_RCNN
 from ..rpn import RPN
 
 __all__ = ['rfcn', 'get_rfcn',
-           'rfcn_resnet50_v2a_voc']
+           'rfcn_vgg16_voc',
+           'rfcn_resnet50_v2a_voc',
+           'rfcn_resnet50_v1b_voc',
+           'rfcn_resnet101_v1d_voc',
+           'rfcn_resnet101_v1d_coco']
 
 
 class rfcn(RFCN_RCNN):
@@ -178,7 +182,7 @@ class rfcn(RFCN_RCNN):
 
         # ROI features
         if self._roi_mode == 'pspool':
-            pooled_feat = F.contrib.PSROIPooling(data=feature, rois=roi, spatial_scale=1. / self._stride, \
+            pooled_feat = F.contrib.PSROIPooling(data=feature, rois=roi, spatial_scale=0.0625, \
                 output_dim=output_dim,pooled_size=self._roi_size[0],group_size=self._roi_size[0]) #,pooled_size=self._roi_size[0]
         else:
             raise ValueError("Invalid roi mode: {}".format(self._roi_mode))
@@ -227,8 +231,8 @@ class rfcn(RFCN_RCNN):
         psroipooled_loc_rois = self.ROIExtraction(F=F, feature=rfcn_bbox_feat, bbox=rpn_box, output_dim=4)
         # _,infer_shape,_ = psroipooled_cls_rois.infer_shape(data0=(1,3,600,800),data1=(1,1,4) )
         # print("psroipooled_cls_rois shape:{}".format(infer_shape))
-        cls_pred = F.Pooling(data=psroipooled_cls_rois, kernel=(7, 7), stride=(7, 7), pool_type='avg')
-        box_pred = F.Pooling(data=psroipooled_loc_rois, kernel=(7, 7), stride=(7, 7), pool_type='avg')
+        cls_pred = F.Pooling(data=psroipooled_cls_rois, pool_type='avg', global_pool=True, kernel=(7, 7))
+        box_pred = F.Pooling(data=psroipooled_loc_rois, pool_type='avg', global_pool=True, kernel=(7, 7))
         # _,infer_shape,_ = cls_pred.infer_shape(data0=(1,3,600,800),data1=(1,1,4) )
         # print("cls_pred shape:{}".format(infer_shape))
         num_roi = self._num_sample if autograd.is_training() else self._rpn_test_post_nms
@@ -315,6 +319,57 @@ def get_rfcn(name, dataset, pretrained=False, ctx=mx.cpu(),
         net.load_parameters(get_model_file(full_name, root=root), ctx=ctx)
     return net
 
+def rfcn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwargs):
+    r"""Faster RCNN model from the paper
+    "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
+    real-time object detection with region proposal networks"
+
+    Parameters
+    ----------
+    pretrained : bool, optional, default is False
+        Load pretrained weights.
+    pretrained_base : bool, optional, default is True
+        Load pretrained base network, the extra layers are randomized. Note that
+        if pretrained is `Ture`, this has no effect.
+    ctx : Context, default CPU
+        The context in which to load the pretrained weights.
+    root : str, default '~/.mxnet/models'
+        Location for keeping the model parameters.
+
+    Examples
+    --------
+    >>> model = get_cascade_rcnn_resnet50_v2a_voc(pretrained=True)
+    >>> print(model)
+    """
+    from .resnet50_v2a import resnet50_v2a
+    from ...data import VOCDetection
+    classes = VOCDetection.CLASSES
+    pretrained_base = False if pretrained else pretrained_base
+    base_network = resnet50_v2a(pretrained=pretrained_base)
+    features = nn.HybridSequential()
+    top_features = nn.HybridSequential()
+    for layer in ['rescale'] + ['layer' + str(i) for i in range(4)]:
+        features.add(getattr(base_network, layer))
+    for layer in ['layer4']:
+        top_features.add(getattr(base_network, layer))
+    train_patterns = '|'.join(['.*rfcn0_conv', '.*dense', '.*rpn', '.*stage(2|3|4)_conv'])  #
+    print("~~~~~")
+    # print(features.collect_params())
+    print(top_features.collect_params())
+    return get_rfcn(
+        name='resnet50_v2a', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, 
+        classes=classes,
+        short=600, max_size=1000, train_patterns=train_patterns,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='pspool', roi_size=(7, 7), stride=16, clip=None,
+        rpn_channel=512, base_size=16, scales=( 8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=5,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)
+
 def rfcn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwargs):
     r"""Faster RCNN model from the paper
     "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
@@ -349,22 +404,51 @@ def rfcn_resnet50_v1b_voc(pretrained=False, pretrained_base=True, **kwargs):
     train_patterns = '|'.join(['.*dense', '.*rpn', '.*down(2|3|4)_conv', '.*layers(2|3|4)_conv'])
     return get_rfcn(
         name='resnet50_v1b', dataset='voc', pretrained=pretrained,
-        features=features, top_features=top_features, classes=classes,
+        features=features, top_features=top_features, 
+        classes=classes,
         short=600, max_size=1000, train_patterns=train_patterns,
         nms_thresh=0.3, nms_topk=400, post_nms=100,
-        roi_mode='align', roi_size=(14, 14), stride=16, clip=None,
-        rpn_channel=1024, base_size=16, scales=(2, 4, 8, 16, 32),
+        roi_mode='pspool', roi_size=(7, 7), stride=16, clip=None,
+        rpn_channel=512, base_size=16, scales=(8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
         rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
-        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=5,
         num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
 
-def rfcn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwargs):
+def rfcn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
     r"""Faster RCNN model from the paper
     "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
     real-time object detection with region proposal networks"
+    """
 
+    from ...data import VOCDetection
+    classes = VOCDetection.CLASSES
+    pretrained_base = False if pretrained else pretrained_base
+    base_network = mx.gluon.model_zoo.vision.get_model('vgg16', pretrained=pretrained_base)
+    features = base_network.features[:30]
+    top_features =base_network.features[31:]
+    # print("~~~~~")
+    # print(features.collect_params())
+    # print(top_features.collect_params())
+    train_patterns = '|'.join(['.*dense', '.*rpn','.*vgg0_conv(4|5|6|7|8|9|10|11|12)'])
+    return get_rfcn('vgg16', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, 
+        classes=classes,
+        short=600, max_size=1000, train_patterns=train_patterns,
+        nms_thresh=0.3, nms_topk=400, post_nms=100,
+        roi_mode='pspool', roi_size=(7, 7), stride=16, clip=None,
+        rpn_channel=512, base_size=16, scales=(8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=5,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        **kwargs)
+
+def rfcn_resnet101_v1d_voc(pretrained=False, pretrained_base=True, **kwargs):
+    r"""Faster RCNN model from the paper
+    "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
+    real-time object detection with region proposal networks"
     Parameters
     ----------
     pretrained : bool, optional, default is False
@@ -376,37 +460,77 @@ def rfcn_resnet50_v2a_voc(pretrained=False, pretrained_base=True, **kwargs):
         The context in which to load the pretrained weights.
     root : str, default '~/.mxnet/models'
         Location for keeping the model parameters.
-
     Examples
     --------
-    >>> model = get_cascade_rcnn_resnet50_v2a_voc(pretrained=True)
+    >>> model = get_faster_rcnn_resnet101_v1d_voc(pretrained=True)
     >>> print(model)
     """
-    from .resnet50_v2a import resnet50_v2a
+    from ..resnetv1b import resnet101_v1d
     from ...data import VOCDetection
     classes = VOCDetection.CLASSES
     pretrained_base = False if pretrained else pretrained_base
-    base_network = resnet50_v2a(pretrained=pretrained_base)
+    base_network = resnet101_v1d(pretrained=pretrained_base, dilated=False, use_global_stats=True)
     features = nn.HybridSequential()
     top_features = nn.HybridSequential()
-    for layer in ['rescale'] + ['layer' + str(i) for i in range(4)]:
+    for layer in ['conv1', 'bn1', 'relu', 'maxpool', 'layer1', 'layer2', 'layer3']:
         features.add(getattr(base_network, layer))
     for layer in ['layer4']:
         top_features.add(getattr(base_network, layer))
-    train_patterns = '|'.join(['.*rfcn0_conv','.*dense', '.*rpn', '.*stage(2|3|4)_conv'])  #
-    # print("~~~~~")
-    # print(features.collect_params())
-    # print(top_features.collect_params())
+    train_patterns = '|'.join(['.*dense', '.*rpn', '.*down(2|3|4)_conv', '.*layers(2|3|4)_conv'])
     return get_rfcn(
-        name='resnet50_v2a', dataset='voc', pretrained=pretrained,
-        features=features, top_features=top_features, 
-        classes=classes,
+        name='resnet101_v1d', dataset='voc', pretrained=pretrained,
+        features=features, top_features=top_features, classes=classes,
         short=600, max_size=1000, train_patterns=train_patterns,
         nms_thresh=0.3, nms_topk=400, post_nms=100,
-        roi_mode='pspool', roi_size=(7, 7), stride=16, clip=None,
-        rpn_channel=512, base_size=16, scales=( 8, 16, 32),
+        roi_mode='align', roi_size=(14, 14), stride=16, clip=None,
+        rpn_channel=1024, base_size=16, scales=(2, 4, 8, 16, 32),
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
         rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
-        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=5,
-        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=300, rpn_min_size=16,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25, max_num_gt=100,
+        **kwargs)
+
+def rfcn_resnet101_v1d_coco(pretrained=False, pretrained_base=True, **kwargs):
+    r"""Faster RCNN model from the paper
+    "Ren, S., He, K., Girshick, R., & Sun, J. (2015). Faster r-cnn: Towards
+    real-time object detection with region proposal networks"
+    Parameters
+    ----------
+    pretrained : bool, optional, default is False
+        Load pretrained weights.
+    pretrained_base : bool, optional, default is True
+        Load pretrained base network, the extra layers are randomized. Note that
+        if pretrained is `Ture`, this has no effect.
+    ctx : Context, default CPU
+        The context in which to load the pretrained weights.
+    root : str, default '~/.mxnet/models'
+        Location for keeping the model parameters.
+    Examples
+    --------
+    >>> model = get_faster_rcnn_resnet101_v1d_coco(pretrained=True)
+    >>> print(model)
+    """
+    from ..resnetv1b import resnet101_v1d
+    from ...data import COCODetection
+    classes = COCODetection.CLASSES
+    pretrained_base = False if pretrained else pretrained_base
+    base_network = resnet101_v1d(pretrained=pretrained_base, dilated=False, use_global_stats=True)
+    features = nn.HybridSequential()
+    top_features = nn.HybridSequential()
+    for layer in ['conv1', 'bn1', 'relu', 'maxpool', 'layer1', 'layer2', 'layer3']:
+        features.add(getattr(base_network, layer))
+    for layer in ['layer4']:
+        top_features.add(getattr(base_network, layer))
+    train_patterns = '|'.join(['.*dense', '.*rpn', '.*down(2|3|4)_conv', '.*layers(2|3|4)_conv'])
+    return get_rfcn(
+        name='resnet101_v1d', dataset='coco', pretrained=pretrained,
+        features=features, top_features=top_features, classes=classes,
+        short=800, max_size=1333, train_patterns=train_patterns,
+        nms_thresh=0.5, nms_topk=-1, post_nms=-1,
+        roi_mode='pspool', roi_size=(7, 7), stride=16, clip=4.42,
+        rpn_channel=1024, base_size=16, scales=(2, 4, 8, 16, 32),
+        ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
+        rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
+        rpn_test_pre_nms=6000, rpn_test_post_nms=1000, rpn_min_size=0,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25, max_num_gt=100,
         **kwargs)

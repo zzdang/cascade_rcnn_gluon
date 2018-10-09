@@ -82,8 +82,6 @@ class RFCN(gluon.HybridBlock):
             self.rfcn_cls.bias.lr_mult = 2.
             self.rfcn_bbox = nn.Conv2D(4 * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
             self.rfcn_bbox.bias.lr_mult = 2.
-            self.rfcn_bbox_pool = nn.GlobalAvgPool2D()
-            self.rfcn_cls_pool = nn.GlobalAvgPool2D()
 
             self.cls_decoder = MultiPerClassDecoder(num_class=self.num_class+1)
             self.box_to_center = BBoxCornerToCenter()
@@ -102,8 +100,6 @@ class RFCN(gluon.HybridBlock):
             self.rfcn_bbox_2nd.weight.lr_mult = 2.
             self.rfcn_cls_2nd.bias.lr_mult = 4.
             self.rfcn_bbox_2nd.bias.lr_mult = 4.
-            self.rfcn_bbox_pool_2nd = nn.GlobalAvgPool2D()
-            self.rfcn_cls_pool_2nd = nn.GlobalAvgPool2D()
 
             self.conv_new_3 = nn.HybridSequential()
             conv_new_3_conv = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
@@ -117,8 +113,6 @@ class RFCN(gluon.HybridBlock):
             self.rfcn_bbox_3rd.weight.lr_mult = 4.
             self.rfcn_cls_3rd.bias.lr_mult = 8.
             self.rfcn_bbox_3rd.bias.lr_mult = 8.
-            self.rfcn_bbox_pool_3rd = nn.GlobalAvgPool2D()
-            self.rfcn_cls_pool_3rd = nn.GlobalAvgPool2D()
 
     def collect_train_params(self, select=None):
         """Collect trainable params.

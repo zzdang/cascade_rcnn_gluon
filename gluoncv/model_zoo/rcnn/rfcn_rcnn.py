@@ -74,13 +74,15 @@ class RFCN_RCNN(gluon.HybridBlock):
             self.top_features = top_features
             self.conv_new_1 = nn.HybridSequential()
             conv_new_1_conv = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            #conv_new_1_conv.weight.lr_mult = 3.
             conv_new_1_conv.bias.lr_mult = 2.
             self.conv_new_1.add(conv_new_1_conv)
             self.conv_new_1.add(nn.Activation('relu'))
             #self.conv_new_1 = nn.Conv2D(1024, 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
-            self.rfcn_cls = nn.Conv2D((self.num_class+1) * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            self.rfcn_cls = nn.Conv2D((self.num_class+1) * (self._roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            #self.rfcn_cls.weight.lr_mult = 3.
             self.rfcn_cls.bias.lr_mult = 2.
-            self.rfcn_bbox = nn.Conv2D(4 * (roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
+            self.rfcn_bbox = nn.Conv2D(4 * (self._roi_size[0]**2), 1, 1, 0, weight_initializer=mx.init.Normal(0.01))
             self.rfcn_bbox.bias.lr_mult = 2.
             self.rfcn_bbox_pool = nn.GlobalAvgPool2D()
             self.rfcn_cls_pool = nn.GlobalAvgPool2D()

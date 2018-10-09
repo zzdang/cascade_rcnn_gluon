@@ -174,7 +174,7 @@ class ResNetV1b(HybridBlock):
                 self.layer3 = self._make_layer(3, block, 256, layers[2], strides=2,
                                                avg_down=avg_down, norm_layer=norm_layer,
                                                last_gamma=last_gamma)
-                self.layer4 = self._make_layer(4, block, 512, layers[3], strides=2,
+                self.layer4 = self._make_layer(4, block, 512, layers[3], strides=1,
                                                avg_down=avg_down, norm_layer=norm_layer,
                                                last_gamma=last_gamma)
             self.avgpool = nn.GlobalAvgPool2D()
