@@ -68,6 +68,7 @@ def get_model(name, **kwargs):
         'cascade_rfcn_resnet50_v1b_voc':cascade_rfcn_resnet50_v1b_voc,
         'cascade_rfcn_resnet50_v2a_voc':cascade_rfcn_resnet50_v2a_voc,
         'cascade_rfcn_resnet101_v1b_voc':cascade_rfcn_resnet101_v1b_voc,
+        'cascade_rfcn_resnet101_v1b_coco':cascade_rfcn_resnet101_v1b_coco,
         'cascade_rcnn_vgg16_voc':cascade_rcnn_vgg16_voc,
         'cascade_rcnn_vgg16_pruned_voc':cascade_rcnn_vgg16_pruned_voc,
         'cifar_resnet20_v1': cifar_resnet20_v1,
