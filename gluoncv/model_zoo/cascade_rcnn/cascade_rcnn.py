@@ -13,12 +13,9 @@ from easydict import EasyDict as edict
 from ..rpn import RPNTargetGenerator
 __all__ = ['CascadeRCNN', 'get_cascade_rcnn',
            'cascade_rcnn_resnet50_v1b_voc',
-           'cascade_rcnn_resnet50_v1b_coco',
-           'cascade_rcnn_resnet50_v2a_voc',
-           'cascade_rcnn_resnet50_v2a_coco',
-           'cascade_rcnn_resnet50_v2_voc',
            'cascade_rcnn_vgg16_voc',
-           'cascade_rcnn_vgg16_pruned_voc']
+           'cascade_rcnn_vgg16_pruned_voc',
+           'cascade_rcnn_vgg16_pruned_coco']
 
 
 class CascadeRCNN(RCNN2):
@@ -372,7 +369,7 @@ def cascade_rcnn_vgg16_voc(pretrained=False, pretrained_base=True, **kwargs):
 
     Examples
     --------
-    >>> model = get_cascade_rcnn_resnet50_v2_voc(pretrained=True)
+    >>> model = get_cascade_rcnn_vgg16_voc(pretrained=True)
     >>> print(model)
     """
 
