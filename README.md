@@ -14,7 +14,7 @@ edited by Yuerong Chen and Ning Li
 1. PASCAL VOC 2007 (Train/Test: 2007+2012trainval/2007test, shorter size: 600)
 
 model            | #GPUs | bs | lr | wd | epoch | decay | AP50  |  AP75  |  AP  
------------------|--------|-----|--------|------|------|-------|-------|-------
+-----------------|--------|-----|--------|------|------|-------|-------|-------|-------
 VGG-RPN-baseline(pruned)| 2 | 1    |1e-3|5e-4|  20 |  14  | 75    | wait  |
 VGG-RPN-cascade(pruned) | 2 | 1    |1e-3|5e-4|  20 |  14  | 76.20 | 57.79 |53.05
 RESNET50-RPN-cascade    | 8 | 1    |4e-3|5e-4|  20 |  14  | 79.71 | 60.00 |
