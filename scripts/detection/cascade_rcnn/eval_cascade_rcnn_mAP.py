@@ -132,18 +132,31 @@ if __name__ == '__main__':
 
     # validation
     if not args.eval_all:
-        names, values = validate(net, val_data, ctx, eval_metric, len(val_dataset))
-        for k, v in zip(names, values):
-            print(k, v)
+        current_map = 0
+        for i in range(10):
+            iou_thresh = 0.5 + 0.05*i
+            eval_metric = VOC07MApMetric(iou_thresh=iou_thresh, class_names=val_dataset.classes)
+            names, values = validate(net, val_data, ctx, eval_metric, len(val_dataset))
+            for k, v in zip(names, values):
+                print(k, v)
+            current_map += float(values[-1])
+        current_map /= 10.0
+        with open(args.save_prefix+'_best_map.log', 'a') as f:
+            f.write('\n\t{:.4f}'.format( current_map))
     else:
         saved_models = glob.glob(args.save_prefix + '*.params')
+        current_map = 0
         for epoch, saved_model in enumerate(sorted(saved_models)):
             print('[Epoch {}] Validating from {}'.format(epoch, saved_model))
             net.load_parameters(saved_model)
             net.collect_params().reset_ctx(ctx)
-            map_name, mean_ap = validate(net, val_data, ctx, eval_metric, len(val_dataset))
-            val_msg = '\n'.join(['{}={}'.format(k, v) for k, v in zip(map_name, mean_ap)])
-            print('[Epoch {}] Validation: \n{}'.format(epoch, val_msg))
-            current_map = float(mean_ap[-1])
+            for i in range(10):
+                iou_thresh = 0.5 + 0.05*i
+                eval_metric = VOC07MApMetric(iou_thresh=iou_thresh, class_names=val_dataset.classes)
+                map_name, mean_ap = validate(net, val_data, ctx, eval_metric, len(val_dataset))
+                val_msg = '\n'.join(['{}={}'.format(k, v) for k, v in zip(map_name, mean_ap)])
+                print('[Epoch {}] Validation: \n{}'.format(epoch, val_msg))
+                current_map += float(mean_ap[-1])
+            current_map /= 10.0
             with open(args.save_prefix+'_best_map.log', 'a') as f:
                 f.write('\n{:04d}:\t{:.4f}'.format(epoch, current_map))

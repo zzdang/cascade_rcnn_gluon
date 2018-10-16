@@ -13,12 +13,13 @@ edited by Yuerong Chen and Ning Li
 ## Benchmarking
 1. PASCAL VOC 2007 (Train/Test: 2007+2012trainval/2007test, shorter size: 600)
 
-model            | #GPUs | bs | lr | epoch | decay | AP50  |  AP75  
------------------|--------|-----|--------|------|------|-------|-------
-VGG-RPN-baseline(pruned)| 2 | 1    |1e-4|  20  |  14  | 75    | wait
-VGG-RPN-cascade(pruned) | 2 | 1    |1e-4|  20 |  14  | 76.20 | 57.77
-RESNET50-RPN-cascade    | 8 | 1    |4e-4|  20 |  14  | 79.71 | 60.00
-
+model            | #GPUs | bs | lr | wd | epoch | decay | AP50  |  AP75  |  AP  
+-----------------|--------|-----|--------|------|------|-------|-------|-------
+VGG-RPN-baseline(pruned)| 2 | 1    |1e-3|5e-4|  20 |  14  | 75    | wait  |
+VGG-RPN-cascade(pruned) | 2 | 1    |1e-3|5e-4|  20 |  14  | 76.20 | 57.79 |53.05
+RESNET50-RPN-cascade    | 8 | 1    |4e-3|5e-4|  20 |  14  | 79.71 | 60.00 |
+Res50-RFCN-Cascade      | 8 | 1    |2e-3|1e-4|  20 |  14  | 76.87 | wait  |
+Res101-RFCN-Cascade     | 8 | 1    |2e-3|1e-4|  20 |  14  | 79.12 | wait  |
 
 ## Developing Environment
 **MXNet 1.3.0**
@@ -82,6 +83,15 @@ If your MXNet installed by using pip install(at least on August). It should be o
     ```Shell
     # testing for pruned VGG16 (VOC dataset)
 	python scripts/detection/cascade_rcnn/demo_cascade_rcnn.py --network cascade_rcnn_vgg16_pruned_voc --pretrained /PATH/TO/TRAINED/MODEL
+    ```
+
+## Training Cascade-RFCN
+
+1. training for Cascade-RFCN
+
+    ```Shell
+    # training for resnet101_v1b
+    python scripts/detection/cascade_rcnn/train_cascade_rfcn.py --network resnet101_v1b --lr 0.002 --wd 0.0001 --save-prefix ./models/ --gpus 0
     ```
 
 ## Examples
