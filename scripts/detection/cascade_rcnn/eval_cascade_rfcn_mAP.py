@@ -140,6 +140,8 @@ if __name__ == '__main__':
             for k, v in zip(names, values):
                 print(k, v)
             current_map += float(values[-1])
+            with open(args.save_prefix+'_every_map.log', 'a') as f:
+                f.write('\n\t{:.4f}'.format( values[-1]))
         current_map /= 10.0
         with open(args.save_prefix+'_best_map.log', 'a') as f:
             f.write('\n\t{:.4f}'.format( current_map))
