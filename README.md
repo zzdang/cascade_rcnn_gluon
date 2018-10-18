@@ -15,11 +15,11 @@ edited by Yuerong Chen and Ning Li
 
 model            | #GPUs | bs | lr | wd | epoch | decay | AP50  |  AP75  |  AP  | [Reference](https://github.com/zhaoweicai/cascade-rcnn) |
 -----------------|--------|-----|--------|------|------|-------|-------|-------|-------|--------
-VGG-RPN-baseline(pruned)| 2 | 1    |1e-3|5e-4|  20 |  14  | 75    | wait  | wait  | 44.1
-VGG-RPN-cascade(pruned) | 2 | 1    |1e-3|5e-4|  20 |  14  | 76.20 | 57.79 | 53.05 | 56.3
+VGG-RPN-baseline(pruned)| 2 | 1    |1e-3|5e-4|  20 |  14  | 75    | wait  | wait  | 42.9
+VGG-RPN-cascade(pruned) | 2 | 1    |1e-3|5e-4|  20 |  14  | 76.20 | 57.79 | 53.05 | 51.2
 RESNET50-RPN-cascade    | 8 | 1    |4e-3|5e-4|  20 |  14  | 79.71 | 60.00 | wait  | None
-Res50-RFCN-Cascade      | 8 | 1    |2e-3|1e-4|  20 |  14  | 76.87 | 55.80 | 50.95 | 57.1
-Res101-RFCN-Cascade     | 8 | 1    |2e-3|1e-4|  20 |  14  | 79.12 | 54.79 | 59.45 | 59.2
+Res50-RFCN-Cascade      | 8 | 1    |2e-3|1e-4|  20 |  14  | 76.87 | 55.80 | 50.95 | 51.8 
+Res101-RFCN-Cascade     | 8 | 1    |2e-3|1e-4|  20 |  14  | 79.12 | 59.45 | 54.79 | 54.2
 
 ## Developing Environment
 **MXNet 1.3.0**
