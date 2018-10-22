@@ -435,7 +435,7 @@ def cascade_rcnn_vgg16_pruned_coco(pretrained=False, pretrained_base=True, **kwa
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
         rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
         rpn_test_pre_nms=6000, rpn_test_post_nms=1000, rpn_min_size=0,
-        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25, max_num_gt=100,
+        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
 
 def cascade_rcnn_vgg16_pruned_voc(pretrained=False, pretrained_base=True, **kwargs):
