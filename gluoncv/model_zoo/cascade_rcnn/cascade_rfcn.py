@@ -443,5 +443,5 @@ def cascade_rfcn_resnet101_v1b_coco(pretrained=False, pretrained_base=True, **kw
         ratios=(0.5, 1, 2), alloc_size=(128, 128), rpn_nms_thresh=0.7,
         rpn_train_pre_nms=12000, rpn_train_post_nms=2000,
         rpn_test_pre_nms=6000, rpn_test_post_nms=1000, rpn_min_size=5,
-        num_sample=128, pos_iou_thresh=0.5, pos_ratio=0.25,
+        num_sample=256, pos_iou_thresh=0.5, pos_ratio=0.25,
         **kwargs)
