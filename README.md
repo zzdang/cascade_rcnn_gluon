@@ -111,7 +111,5 @@ If your MXNet installed by using pip install(at least on August). It should be o
 
 ## To Do List
 
-- [x] Train Cascade-RCNN with VGG16 and pruned vgg16 backbone
-- [ ] Train Cascade-RCNN with pruned VGG16 backbone(2 batch pre gpu)
-- [ ] Train faster-RCNN and Cascade-RCNN with resnet50 backbone 
+- [ ] Train Cascade-RCNN with FPN backbone
 
