@@ -23,9 +23,9 @@ Res101-RFCN-Cascade     | 8 | 1    |2e-3|1e-4|  20 |  14  | 79.12 | 59.45 | 54.7
 
 2. MS-COCO (Train/Test: train2017/val2017, shorter size: 800 for FPN and 600 for the others)
 
-model     | #GPUs | bs | epoch | decay | AP 
----------|--------|-----|------|-------|--------
-Res101-RFCN-Cascade     | 8 | 1   | 24 |  16    | 34.4
+model     | #GPUs | bs | epoch | decay |  AP  | [AP Reference](https://github.com/zhaoweicai/cascade-rcnn) |
+---------|--------|-----|------|-------|--------|--------
+Res101-RFCN-Cascade     | 8 | 1   | 24 |  16    | 34.4 | 33.3
 
 ## Developing Environment
 **MXNet 1.3.0**
