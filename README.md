@@ -21,6 +21,12 @@ RESNET50-RPN-cascade    | 8 | 1    |4e-3|5e-4|  20 |  14  | 79.71 | 60.00 | wai
 Res50-RFCN-Cascade      | 8 | 1    |2e-3|1e-4|  20 |  14  | 76.87 | 55.80 | 50.95 | 51.8 
 Res101-RFCN-Cascade     | 8 | 1    |2e-3|1e-4|  20 |  14  | 79.12 | 59.45 | 54.79 | 54.2
 
+2. MS-COCO (Train/Test: train2017/val2017, shorter size: 800 for FPN and 600 for the others)
+
+model     | #GPUs | bs | epoch | decay | AP 
+---------|--------|-----|------|-------|--------
+Res101-RFCN-Cascade     | 8 | 1   | 24 |  16    | 34.4
+
 ## Developing Environment
 **MXNet 1.3.0**
 
